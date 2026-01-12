@@ -1,73 +1,80 @@
 
-import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
-import crypto from 'crypto';
+import { NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 
-// POST /api/user/api-key - Generates a new API key
+// Generate a random string for the API key
+const generateApiKey = () => {
+  return 'heho_' + randomBytes(16).toString('hex');
+};
+
 export async function POST(req: Request) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
   try {
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: User not found or session expired. Please log in again.' }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
     }
 
-    // Generate a new API key
-    const apiKey = `saas_${crypto.randomBytes(24).toString('hex')}`;
-    // Hash the API key for storage
-    const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
+    // Check if the user profile exists
+    const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .single();
 
-    // Store the hash in the user's record
+    // If there's an error fetching the profile or the profile is null, ask user to recover profile
+    if (profileError || !profile) {
+        return NextResponse.json({ error: 'User profile not found. Please use the Account Recovery option on the settings page.' }, { status: 404 });
+    }
+    
+    const apiKey = generateApiKey();
+
+    // Since we are no longer hashing, we store the key directly.
+    // Note: This is less secure. We are doing this based on the user's explicit request.
     const { error: updateError } = await supabase
       .from('users')
-      .update({ api_key_hash: hashedKey })
+      .update({ api_key_hash: apiKey })
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Failed to save API key hash:', updateError);
-      return NextResponse.json({ error: 'Database error: Could not save API key.' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to save API key to the database.', details: updateError.message }, { status: 500 });
     }
 
-    // Return the unhashed key to the user. This is the only time it will be shown.
     return NextResponse.json({ apiKey });
 
   } catch (error: any) {
-    console.error('Error generating API key:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'An unexpected error occurred.', details: error.message }, { status: 500 });
   }
 }
 
-// DELETE /api/user/api-key - Deletes the user's API key
 export async function DELETE(req: Request) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
   try {
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: User not found or session expired. Please log in again.' }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
     }
 
-    // Remove the API key hash from the user's record
     const { error: updateError } = await supabase
       .from('users')
       .update({ api_key_hash: null })
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Failed to delete API key hash:', updateError);
-      return NextResponse.json({ error: 'Database error: Could not delete API key.' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to delete API key.', details: updateError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ message: 'API key deleted successfully' });
+    return NextResponse.json({ message: 'API key deleted successfully.' });
 
   } catch (error: any) {
-    console.error('Error deleting API key:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'An unexpected error occurred.', details: error.message }, { status: 500 });
   }
 }

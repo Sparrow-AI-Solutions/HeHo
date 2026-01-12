@@ -43,7 +43,7 @@ export default function ApiDocsPage() {
           <section id="authentication">
             <h2 className="text-3xl font-semibold border-b border-gray-700 pb-3 mb-6 text-gray-100">Authentication</h2>
             <p className="mb-4 text-gray-300">
-              The Heho API uses API keys to authenticate requests. You can view and manage your API keys in the <Link href="/app/settings" className="text-indigo-400 hover:underline">Settings</A> page. All API requests must be made over <code className="bg-gray-800 px-1 py-0.5 rounded">HTTPS</code>.
+              The Heho API uses API keys to authenticate requests. You can view and manage your API keys in the <Link href="/app/settings" className="text-indigo-400 hover:underline">Settings</Link> page. All API requests must be made over <code className="bg-gray-800 px-1 py-0.5 rounded">HTTPS</code>.
             </p>
             <p className="text-gray-300">
               To authenticate, provide your API key in the <code className="bg-gray-800 px-1 py-0.5 rounded">Authorization</code> header of your request, using the <code className="bg-gray-800 px-1 py-0.5 rounded">Bearer</code> schema.
