@@ -290,14 +290,14 @@ export default function CreateChatbotPage() {
           ← Back to Dashboard
         </Link>
 
-        {chatbotCount > 0 ? (
+        {chatbotCount > 50 ? (
           <Card className='border-border/50 bg-card/50'>
             <CardHeader>
               <CardTitle className='text-2xl'>Free Plan Limit Reached</CardTitle>
             </CardHeader>
             <CardContent>
               <p className='text-muted-foreground mb-4'>
-                You have reached the maximum of 1 chatbot for the free plan. Please upgrade to a paid plan to create
+                You have reached the maximum of 50 chatbots for the free plan. Please upgrade to a paid plan to create
                 more chatbots.
               </p>
               <Button disabled>Create Chatbot</Button>
