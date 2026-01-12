@@ -11,7 +11,7 @@ const pricingPlans = [
     period: "/month",
     description: "Perfect for getting started with AI chatbots",
     features: [
-      "1 chatbot",
+      "50 chatbot",
       "100 messages/day",
       "Free OpenRouter models",
       "Supabase integration",
