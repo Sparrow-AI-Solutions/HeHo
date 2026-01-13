@@ -4,6 +4,44 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 
 const ApiDocsPage = () => {
+  const curlVerify = `curl -X POST https://heho.vercel.app/api/verify-user \ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY"`;
+
+  const fetchVerify = `fetch('https://heho.vercel.app/api/verify-user', { 
+  method: 'POST', 
+  headers: { 
+    'Authorization': 'Bearer YOUR_HEHO_API_KEY' 
+  } 
+}) 
+.then(response => response.json()) 
+.then(data => console.log(data)) 
+.catch(error => console.error('Error:', error));`;
+
+  const curlChat = `curl -X POST https://heho.vercel.app/api/aichat \ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \ 
+  -H "Content-Type: application/json" \ 
+  -d '{
+    "chatbotId": "YOUR_CHATBOT_ID",
+    "history": [{ "role": "user", "content": "Who are you?" }, { "role": "assistant", "content": "I am an AI assistant." }],
+    "messages": [{ "role": "user", "content": "What can you do?" }]
+  }'`;
+
+  const fetchChat = `const chatbotId = 'YOUR_CHATBOT_ID';
+const history = [{ role: 'user', content: 'Who are you?' }, { role: 'assistant', content: 'I am an AI assistant.' }];
+const messages = [{ role: 'user', content: 'What can you do?' }];
+
+fetch('https://heho.vercel.app/api/aichat', { 
+  method: 'POST', 
+  headers: { 
+    'Authorization': 'Bearer YOUR_HEHO_API_KEY', 
+    'Content-Type': 'application/json'
+  }, 
+  body: JSON.stringify({ chatbotId, history, messages })
+}) 
+.then(response => response.json()) 
+.then(data => console.log('AI Reply:', data.reply)) 
+.catch(error => console.error('Error:', error));`;
+
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="mb-8">
@@ -30,10 +68,8 @@ const ApiDocsPage = () => {
         </CardContent>
       </Card>
 
-      {/* API Endpoints Section */}
       <h2 className="text-3xl font-bold tracking-tight mb-6">API Endpoints</h2>
 
-      {/* Verify User Endpoint */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/verify-user</CardTitle>
@@ -42,40 +78,19 @@ const ApiDocsPage = () => {
         <CardContent>
           <p className="font-semibold mb-2">Description</p>
           <p className="mb-4">This endpoint is a simple way to confirm that your API key is working correctly. It retrieves and returns the full user object associated with the key.</p>
-          
           <p className="font-semibold mb-2">Response Body (on success)</p>
           <p className="mb-4">Returns a JSON object representing the authenticated user.</p>
-
           <div className="mb-6">
             <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-              <code>
-                {`curl -X POST https://heho.vercel.app/api/verify-user \ 
-  -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
-              </code>
-            </pre>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto"><code>{curlVerify}</code></pre>
           </div>
-
           <div>
             <h4 className="font-semibold text-lg mb-2">Example: JavaScript (fetch)</h4>
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-              <code>
-                {`fetch('https://heho.vercel.app/api/verify-user', { 
-  method: 'POST', 
-  headers: { 
-    'Authorization': 'Bearer YOUR_HEHO_API_KEY' 
-  } 
-}) 
-.then(response => response.json()) 
-.then(data => console.log(data)) 
-.catch(error => console.error('Error:', error));`}
-              </code>
-            </pre>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto"><code>{fetchVerify}</code></pre>
           </div>
         </CardContent>
       </Card>
 
-      {/* AI Chat Endpoint */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/aichat</CardTitle>
@@ -84,7 +99,6 @@ const ApiDocsPage = () => {
         <CardContent>
           <p className="font-semibold mb-2">Description</p>
           <p className="mb-4">This endpoint allows you to interact with a specific chatbot you own. You must provide the chatbot's ID and a standard messages array. It supports the full functionality of the internal chat, including reading from and writing to connected databases.</p>
-
           <p className="font-semibold mb-2">Request Body (JSON)</p>
           <Table className="mb-4">
             <TableHeader>
@@ -112,51 +126,18 @@ const ApiDocsPage = () => {
               </TableRow>
             </TableBody>
           </Table>
-
           <p className="font-semibold mb-2">Response Body (on success)</p>
           <p className="mb-4">Returns a JSON object containing the AI's reply: `{ "reply": "The AI response here." }`</p>
-
           <div className="mb-6">
             <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-              <code>
-                {`curl -X POST https://heho.vercel.app/api/aichat \ 
-  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \ 
-  -H "Content-Type: application/json" \ 
-  -d '{
-    "chatbotId": "YOUR_CHATBOT_ID",
-    "history": [{ "role": "user", "content": "Who are you?" }, { "role": "assistant", "content": "I am an AI assistant." }],
-    "messages": [{ "role": "user", "content": "What can you do?" }]
-  }'`}
-              </code>
-            </pre>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto"><code>{curlChat}</code></pre>
           </div>
-
           <div>
             <h4 className="font-semibold text-lg mb-2">Example: JavaScript (fetch)</h4>
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-              <code>
-                {`const chatbotId = 'YOUR_CHATBOT_ID';
-const history = [{ role: 'user', content: 'Who are you?' }, { role: 'assistant', content: 'I am an AI assistant.' }];
-const messages = [{ role: 'user', content: 'What can you do?' }];
-
-fetch('https://heho.vercel.app/api/aichat', { 
-  method: 'POST', 
-  headers: { 
-    'Authorization': 'Bearer YOUR_HEHO_API_KEY', 
-    'Content-Type': 'application/json'
-  }, 
-  body: JSON.stringify({ chatbotId, history, messages })
-}) 
-.then(response => response.json()) 
-.then(data => console.log('AI Reply:', data.reply)) 
-.catch(error => console.error('Error:', error));`}
-              </code>
-            </pre>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto"><code>{fetchChat}</code></pre>
           </div>
         </CardContent>
       </Card>
-
     </div>
   );
 };
