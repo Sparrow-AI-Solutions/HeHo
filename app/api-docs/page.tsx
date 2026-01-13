@@ -3,12 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-// This component renders the API documentation page.
 const ApiDocsPage = () => {
   return (
-    // All content is wrapped in a single root div to ensure valid JSX structure.
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-      
+
       <header className="mb-8">
         <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-50">Heho API Documentation</h1>
         <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
@@ -16,7 +14,6 @@ const ApiDocsPage = () => {
         </p>
       </header>
 
-      {/* Authentication Section */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Authentication</CardTitle>
@@ -36,7 +33,6 @@ const ApiDocsPage = () => {
 
       <h2 className="text-3xl font-bold tracking-tight mb-6">API Endpoints</h2>
 
-      {/* Verify User Endpoint */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/verify-user</CardTitle>
@@ -71,7 +67,6 @@ const ApiDocsPage = () => {
         </CardContent>
       </Card>
 
-      {/* AI Chat Endpoint */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/aichat</CardTitle>
@@ -91,7 +86,7 @@ const ApiDocsPage = () => {
               <TableRow>
                 <TableCell><code>chatbotId</code></TableCell>
                 <TableCell>string</TableCell>
-                <TableCell>The unique ID of the chatbot you want to interact with.</TableCell>
+                <TableCell>The unique ID of your chatbot. Find this on the chatbot's settings page.</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell><code>messages</code></TableCell>
@@ -144,7 +139,7 @@ const ApiDocsPage = () => {
         </CardContent>
       </Card>
 
-    </div> // End of the single root div
+    </div>
   );
 };
 

@@ -33,7 +33,6 @@ export async function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    // 1. Authenticate with API Key
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new NextResponse(JSON.stringify({ error: 'Authorization header is missing or malformed.' }), { status: 401, headers: corsHeaders });
@@ -51,7 +50,6 @@ export async function POST(req: Request) {
       return new NextResponse(JSON.stringify({ error: 'A valid chatbotId and a messages array are required.' }), { status: 400, headers: corsHeaders });
     }
 
-    // 2. Fetch Chatbot and Owner Data, ensuring ownership
     const { data: chatbot } = await supabaseAdmin.from('chatbots').select('*, users (*)').eq('id', chatbotId).eq('user_id', userId).single();
     if (!chatbot) {
       return new NextResponse(JSON.stringify({ error: 'Chatbot not found or you do not have access.' }), { status: 404, headers: corsHeaders });
@@ -62,7 +60,6 @@ export async function POST(req: Request) {
       return new NextResponse(JSON.stringify({ error: 'The chatbot owner has not configured their OpenRouter API key.' }), { status: 400, headers: corsHeaders });
     }
 
-    // 3. Build System Prompt (with DB integration)
     let systemPrompt = `You are a helpful AI assistant named ${chatbot.name}.`;
     if (chatbot.description) systemPrompt += ` ${chatbot.description}`;
     if (chatbot.instructions) systemPrompt += `\n\nINSTRUCTIONS:\n${chatbot.instructions}`;
@@ -88,7 +85,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Call AI Service
     let responseData: any = null;
     for (const model of [chatbot.model, ...POPULAR_MODELS]) {
         if (!model) continue;
@@ -108,16 +104,22 @@ export async function POST(req: Request) {
     const tokensUsed = responseData.usage?.total_tokens || 0;
     let dbWriteOccurred = false;
 
-    // 5. Handle DB Write
-    if (reply.startsWith('[ADD_DATA]')) {
-      const { tableName, data } = JSON.parse(reply.slice(10));
-      const db = createClient(owner.supabase_url, owner.supabase_key_encrypted);
-      await db.from(tableName).insert([data]);
-      dbWriteOccurred = true;
-      reply = `Done. Record added to ${tableName}.`;
+    const addDataRegex = /^\[ADD_DATA\](.*?)(?=\s|$)/s;
+    const match = reply.match(addDataRegex);
+
+    if (match && match[1]) {
+        try {
+            const { tableName, data } = JSON.parse(match[1]);
+            const db = createClient(owner.supabase_url, owner.supabase_key_encrypted);
+            await db.from(tableName).insert([data]);
+            dbWriteOccurred = true;
+            reply = reply.replace(addDataRegex, '').trim();
+        } catch (e) {
+            console.error("Failed to parse or insert data:", e);
+            // Do not modify reply, let the raw response be returned for debugging
+        }
     }
 
-    // 6. Track Usage
     const month = new Date().toISOString().split('T')[0];
     const { data: existing } = await supabaseAdmin.from('usage').select('*').eq('user_id', userId).eq('month', month).maybeSingle();
     if (existing) {
@@ -126,7 +128,6 @@ export async function POST(req: Request) {
       await supabaseAdmin.from('usage').insert({ user_id: userId, month, messages: 1, tokens: tokensUsed, api_calls: 1, db_writes: dbWriteOccurred ? 1 : 0 });
     }
 
-    // 7. Return Reply
     return new NextResponse(JSON.stringify({ reply }), { status: 200, headers: corsHeaders });
 
   } catch (error: any) {
