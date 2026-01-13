@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 // IMPORTANT: These environment variables must be available in your hosting environment for this to work.
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,7 +12,7 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 // This client has the ability to bypass Row Level Security.
 // Be VERY careful where you use this.
 export const createClient = () => {
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+  return createSupabaseClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
