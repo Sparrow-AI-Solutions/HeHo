@@ -1,115 +1,162 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 const ApiDocsPage = () => {
-  const exampleCurl = `curl -X POST -H "Authorization: Bearer YOUR_HEHO_API_KEY" https://heho.vercel.app/api/verify-user`;
-
-  const exampleNode = `
-async function verifyUser(apiKey) {
-  try {
-    const response = await fetch('https://heho.vercel.app/api/verify-user', {
-      method: 'POST',
-      headers: {
-        'Authorization': \`Bearer \${apiKey}\`
-      }
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || \`HTTP error! Status: \${response.status}\`);
-    }
-
-    const userData = await response.json();
-    console.log('User data:', userData);
-    return userData;
-  } catch (error) {
-    console.error('Failed to verify user:', error);
-  }
-}
-
-// Usage:
-// verifyUser('heho_xxxxxxxxxxxxxxxxxxxxxxxx');
-  `;
-
-  const exampleResponse = `
-{
-  "id": "12345678-1234-1234-1234-1234567890ab",
-  "email": "user@example.com",
-  "name": "John Doe",
-  "created_at": "2023-10-27T10:00:00Z",
-  "updated_at": "2023-10-27T10:00:00Z",
-  "plan": "free",
-  "openrouter_key_encrypted": "enc_...",
-  "supabase_url": "https://[project_ref].supabase.co",
-  "supabase_key_encrypted": "enc_...",
-  "supabase_permissions": {
-    "can_read": true,
-    "can_create": false,
-    "can_delete": false,
-    "can_insert": true
-  },
-  "setup_completed": true,
-  "provider_token": "prov_...",
-  "refresh_token": "ref_...",
-  "supabase_service_key_encrypted": "enc_...",
-  "heho_api_key": "heho_xxxxxxxxxxxxxxxxxxxxxxxx"
-}
-  `;
-
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-4xl font-bold mb-4">Heho API Documentation</h1>
-        <p className="text-muted-foreground mb-10">A simple guide to using your Heho API key.</p>
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+      <header className="mb-8">
+        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-50">Heho API Documentation</h1>
+        <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
+          Welcome to the Heho API. Use your API key to integrate Heho services into your own applications.
+        </p>
+      </header>
 
-        <div className="space-y-8">
-          <Card className="border-border/50 bg-card/50">
-            <CardHeader>
-              <CardTitle>API Endpoint</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-2">To verify a user based on their Heho API key, send a POST request to the following endpoint:</p>
-              <pre className="bg-background/80 p-2 rounded-md"><code className="font-mono text-sm">POST /api/verify-user</code></pre>
-            </CardContent>
-          </Card>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Authentication</CardTitle>
+          <CardDescription>Your API key must be included in the Authorization header of every request.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p>Get your API key from the <a href="/settings" className="text-blue-500 hover:underline">Settings</a> page.</p>
+          <pre className="mt-2 bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+            <code>Authorization: Bearer YOUR_HEHO_API_KEY</code>
+          </pre>
+          <div className="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-500">
+            <p className="font-bold text-yellow-800 dark:text-yellow-300">Warning</p>
+            <p className="text-yellow-700 dark:text-yellow-400">Your API key is a secret! Do not share it publicly or commit it to version control.</p>
+          </div>
+        </CardContent>
+      </Card>
 
-          <Card className="border-border/50 bg-card/50">
-            <CardHeader>
-              <CardTitle>Authentication</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-4">Authentication is handled via a Bearer token in the <code className="bg-background/80 p-1 rounded-md text-xs">Authorization</code> header. You can generate your API key from your <a href="/settings" className="text-primary hover:underline">settings page</a>.</p>
-              
-              <h3 className="font-semibold mb-2 mt-4">cURL Example</h3>
-              <pre className="bg-background/80 p-4 rounded-md overflow-x-auto"><code className="language-bash">{exampleCurl.trim()}</code></pre>
-              
-              <h3 className="font-semibold mb-2 mt-6">JavaScript (Node.js) Example</h3>
-              <pre className="bg-background/80 p-4 rounded-md overflow-x-auto"><code className="language-javascript">{exampleNode.trim()}</code></pre>
-            </CardContent>
-          </Card>
+      {/* API Endpoints Section */}
+      <h2 className="text-3xl font-bold tracking-tight mb-6">API Endpoints</h2>
 
-          <Card className="border-border/50 bg-card/50">
-            <CardHeader>
-              <CardTitle>Successful Response (200 OK)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-2">If the API key is valid, the server will respond with a JSON object containing the full user record associated with that key.</p>
-               <p className="text-sm text-amber-500 mb-4"><b>Warning:</b> The response contains sensitive data, including encrypted keys. Handle it securely.</p>
-              <pre className="bg-background/80 p-4 rounded-md overflow-x-auto"><code className="language-json">{exampleResponse.trim()}</code></pre>
-            </CardContent>
-          </Card>
+      {/* Verify User Endpoint */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/verify-user</CardTitle>
+          <CardDescription>Verifies your API key and returns your complete user profile from the database.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Description</p>
+          <p className="mb-4">This endpoint is a simple way to confirm that your API key is working correctly. It retrieves and returns the full user object associated with the key.</p>
+          
+          <p className="font-semibold mb-2">Response Body (on success)</p>
+          <p className="mb-4">Returns a JSON object representing the authenticated user.</p>
 
-           <Card className="border-destructive/30 bg-destructive/10">
-            <CardHeader>
-              <CardTitle className="text-destructive">Error Responses</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p><code className="bg-background/80 p-1 rounded-md text-xs">401 Unauthorized</code>: This response is returned if the API key is missing, malformed, or invalid.</p>
-                <p className="mt-2"><code className="bg-background/80 p-1 rounded-md text-xs">500 Internal Server Error</code>: This indicates an unexpected error on the server side.</p>
-            </CardContent>
-          </Card>
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+                {`curl -X POST https://heho.vercel.app/api/verify-user \ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
+              </code>
+            </pre>
+          </div>
 
-        </div>
-      </div>
+          <div>
+            <h4 className="font-semibold text-lg mb-2">Example: JavaScript (fetch)</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+                {`fetch('https://heho.vercel.app/api/verify-user', { 
+  method: 'POST', 
+  headers: { 
+    'Authorization': 'Bearer YOUR_HEHO_API_KEY' 
+  } 
+}) 
+.then(response => response.json()) 
+.then(data => console.log(data)) 
+.catch(error => console.error('Error:', error));`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Chat Endpoint */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/aichat</CardTitle>
+          <CardDescription>Send a message to one of your chatbots and receive an AI-generated reply.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Description</p>
+          <p className="mb-4">This endpoint allows you to interact with a specific chatbot you own. You must provide the chatbot's ID and a standard messages array. It supports the full functionality of the internal chat, including reading from and writing to connected databases.</p>
+
+          <p className="font-semibold mb-2">Request Body (JSON)</p>
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell><code>chatbotId</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The unique ID of the chatbot you want to interact with.</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>messages</code></TableCell>
+                <TableCell>array</TableCell>
+                <TableCell>An array of new message objects (e.g., `[{ role: 'user', content: 'Hello' }]`).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>history</code></TableCell>
+                <TableCell>array (optional)</TableCell>
+                <TableCell>An array of previous messages to provide conversation context.</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          <p className="font-semibold mb-2">Response Body (on success)</p>
+          <p className="mb-4">Returns a JSON object containing the AI's reply: `{ "reply": "The AI response here." }`</p>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+                {`curl -X POST https://heho.vercel.app/api/aichat \ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \ 
+  -H "Content-Type: application/json" \ 
+  -d '{
+    "chatbotId": "YOUR_CHATBOT_ID",
+    "history": [{ "role": "user", "content": "Who are you?" }, { "role": "assistant", "content": "I am an AI assistant." }],
+    "messages": [{ "role": "user", "content": "What can you do?" }]
+  }'`}
+              </code>
+            </pre>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-lg mb-2">Example: JavaScript (fetch)</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+                {`const chatbotId = 'YOUR_CHATBOT_ID';
+const history = [{ role: 'user', content: 'Who are you?' }, { role: 'assistant', content: 'I am an AI assistant.' }];
+const messages = [{ role: 'user', content: 'What can you do?' }];
+
+fetch('https://heho.vercel.app/api/aichat', { 
+  method: 'POST', 
+  headers: { 
+    'Authorization': 'Bearer YOUR_HEHO_API_KEY', 
+    'Content-Type': 'application/json'
+  }, 
+  body: JSON.stringify({ chatbotId, history, messages })
+}) 
+.then(response => response.json()) 
+.then(data => console.log('AI Reply:', data.reply)) 
+.catch(error => console.error('Error:', error));`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
     </div>
   );
 };
