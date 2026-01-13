@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
 import { CheckCircle, AlertCircle, Loader2, LogOut, Key, Database, User, Shield, Copy, Trash2, ExternalLink } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -20,11 +19,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [apiKey, setApiKey] = useState("")
-  const [hasApiKey, setHasApiKey] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
+  
+  const [hehoApiKey, setHehoApiKey] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const router = useRouter()
   const supabase = createClient()
@@ -39,13 +38,13 @@ export default function SettingsPage() {
       }
       setUser(currentUser)
 
-      const { data } = await supabase.from("users").select("*").eq("id", currentUser.id).single()
+      const { data } = await supabase.from("users").select("*, heho_api_key").eq("id", currentUser.id).single()
 
       if (data) {
         setOpenRouterKey(data.openrouter_key_encrypted || "")
         setSupabaseUrl(data.supabase_url || "")
         setSupabaseKey(data.supabase_key_encrypted || "")
-        setHasApiKey(!!data.api_key_hash)
+        setHehoApiKey(data.heho_api_key || "")
       }
       setLoading(false)
     }
@@ -72,28 +71,25 @@ export default function SettingsPage() {
     }
   }
 
-  const handleGenerateApiKey = async () => {
+  const handleGenerateHehoApiKey = async () => {
+    if (!user) return;
     setIsGenerating(true);
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch('/api/user/api-key', { method: 'POST' });
-      const responseText = await response.text();
+      const randomBytes = new Uint8Array(12);
+      window.crypto.getRandomValues(randomBytes);
+      const apiKeyChars = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
+      const newApiKey = `heho_${apiKeyChars}`;
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ heho_api_key: newApiKey })
+        .eq('id', user.id);
 
-      if (!response.ok) {
-        let errorMessage = 'An error occurred.';
-        try {
-          const errorJson = JSON.parse(responseText);
-          errorMessage = errorJson.error || errorMessage;
-        } catch (e) {
-          errorMessage = `Server returned a non-JSON error response. Status: ${response.status}`;
-        }
-        throw new Error(errorMessage);
-      }
+      if (updateError) throw updateError;
 
-      const data = JSON.parse(responseText);
-      setApiKey(data.apiKey);
-      setHasApiKey(true);
+      setHehoApiKey(newApiKey);
       setSuccess('New Heho API Key generated successfully!');
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
@@ -102,28 +98,21 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteApiKey = async () => {
-    if (!confirm("Are you sure you want to delete your API key? This action is irreversible.")) return;
+  const handleDeleteHehoApiKey = async () => {
+    if (!user) return;
+    if (!confirm("Are you sure you want to delete your Heho API key? This action is irreversible.")) return;
     setIsDeleting(true);
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch('/api/user/api-key', { method: 'DELETE' });
-      const responseText = await response.text();
-      
-      if (!response.ok) {
-        let errorMessage = 'An error occurred.';
-        try {
-          const errorJson = JSON.parse(responseText);
-          errorMessage = errorJson.error || errorMessage;
-        } catch (e) {
-           errorMessage = `Server returned a non-JSON error response. Status: ${response.status}`;
-        }
-        throw new Error(errorMessage);
-      }
-      
-      setApiKey("");
-      setHasApiKey(false);
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ heho_api_key: null })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setHehoApiKey("");
       setSuccess('API Key deleted successfully!');
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
@@ -133,8 +122,8 @@ export default function SettingsPage() {
   }
 
   const handleCopy = () => {
-    if (!apiKey) return;
-    navigator.clipboard.writeText(apiKey);
+    if (!hehoApiKey) return;
+    navigator.clipboard.writeText(hehoApiKey);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   }
@@ -175,43 +164,29 @@ export default function SettingsPage() {
           <Card className="border-border/50 bg-card/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5" /> Heho API Key</CardTitle>
-              <CardDescription className="flex justify-between items-center">
-                <span>This key allows you to interact with the Heho API.</span>
-                <Link href="/api-docs" target="_blank" className="text-sm text-primary hover:underline flex items-center gap-1">
-                  API Docs <ExternalLink className="h-4 w-4" />
-                </Link>
-              </CardDescription>
+              <CardDescription>This key allows you to interact with the Heho API.</CardDescription>
             </CardHeader>
             <CardContent>
-              {hasApiKey && !apiKey && (
-                <div className="p-4 rounded-md bg-background/50 text-muted-foreground text-sm">
-                  You have an API key, but it can only be viewed once upon generation. If you have lost it, you must delete it and generate a new one.
-                </div>
-              )}
-
-              {apiKey && (
-                <div className="flex items-center gap-2">
-                  <Input value={apiKey} readOnly className="bg-background/50 font-mono" />
-                  <Button variant="outline" size="icon" onClick={handleCopy} className="shrink-0">
-                    {isCopied ? <CheckCircle className="h-4 w-4 text-green-500"/> : <Copy className="h-4 w-4"/>}
-                  </Button>
-                </div>
-              )}
-              
+              <div className="flex items-center gap-2">
+                <Input value={hehoApiKey} readOnly placeholder={hehoApiKey ? "************************" : "No API Key generated"} className="bg-background/50 font-mono" />
+                <Button variant="outline" size="icon" onClick={handleCopy} disabled={!hehoApiKey} className="shrink-0">
+                  {isCopied ? <CheckCircle className="h-4 w-4 text-green-500"/> : <Copy className="h-4 w-4"/>}
+                </Button>
+              </div>
               <div className="flex gap-2 mt-4">
-                <Button onClick={handleGenerateApiKey} disabled={isGenerating || hasApiKey}>
+                <Button onClick={handleGenerateHehoApiKey} disabled={isGenerating}>
                   {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Key className="mr-2 h-4 w-4"/>}
-                  Generate API Key
+                  {hehoApiKey ? 'Regenerate Key' : 'Generate Key'}
                 </Button>
 
-                {hasApiKey && (
-                  <Button variant="destructive" onClick={handleDeleteApiKey} disabled={isDeleting}>
+                {hehoApiKey && (
+                  <Button variant="destructive" onClick={handleDeleteHehoApiKey} disabled={isDeleting}>
                     {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4"/>}
-                    Delete API Key
+                    Delete Key
                   </Button>
                 )}
               </div>
-               <p className="text-xs text-muted-foreground mt-3">Remember to treat your API key like a password. Do not share it publicly.</p>
+               <p className="text-xs text-muted-foreground mt-3">Treat your API key like a password. <Link href="/api-docs" target="_blank" className="text-primary hover:underline">Read the docs</Link> to learn how to use it.</p>
             </CardContent>
           </Card>
 
