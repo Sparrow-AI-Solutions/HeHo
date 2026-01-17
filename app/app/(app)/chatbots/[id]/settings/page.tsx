@@ -568,9 +568,11 @@ function ChatbotSettingsPage() {
             </div>
 
             <Tabs defaultValue='embed' className='w-full'>
-               <TabsList className="grid w-full grid-cols-2 bg-card/50 border border-border/50">
+               {/* Updated grid-cols-2 to grid-cols-3 to accommodate the new tab */}
+               <TabsList className="grid w-full grid-cols-3 bg-card/50 border border-border/50">
                 <TabsTrigger value="embed">Embed Code</TabsTrigger>
                 <TabsTrigger value="iframe">iframe</TabsTrigger>
+                <TabsTrigger value="api">HeHo API</TabsTrigger> {/* New TabsTrigger */}
               </TabsList>
               <TabsContent value='embed'>
                 <Card className='border-border/50 bg-card/50'>
@@ -601,6 +603,31 @@ function ChatbotSettingsPage() {
                     <Button onClick={() => copyToClipboard(iframeCode, 'iframe')} className='w-full bg-white hover:bg-gray-200 text-black'>
                       {copied === 'iframe' ? <Check className='h-4 w-4 mr-2' /> : <Copy className='h-4 w-4 mr-2' />}Copy iframe Code
                     </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* New TabsContent for HeHo API */}
+              <TabsContent value='api'>
+                <Card className='border-border/50 bg-card/50'>
+                  <CardHeader>
+                    <CardTitle>HeHo API Integration</CardTitle>
+                    <CardDescription>Integrate your chatbot with the HeHo API</CardDescription>
+                  </CardHeader>
+                  <CardContent className='space-y-4'>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Chatbot ID</label>
+                      <div className='flex gap-2'>
+                        {/* The chatbotId variable is already available in scope from params.id */}
+                        <Input value={chatbotId} readOnly className='bg-background/50 border-border/50 text-foreground text-sm' />
+                        <Button onClick={() => copyToClipboard(chatbotId, 'chatbotId')} className='bg-white hover:bg-gray-200 text-black px-3'>
+                          {copied === 'chatbotId' ? <Check className='h-4 w-4' /> : <Copy className='h-4 w-4' />}
+                        </Button>
+                      </div>
+                    </div>
+                    <p className='text-sm text-muted-foreground'>
+                      For more information on integrating with the HeHo API, refer to the <a href="/api-documentation" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">API Documentation Page</a>.
+                    </p>
                   </CardContent>
                 </Card>
               </TabsContent>
