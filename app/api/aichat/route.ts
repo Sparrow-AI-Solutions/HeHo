@@ -77,15 +77,15 @@ export async function POST(req: Request) {
 
     const userId = apiUser.id
 
-    /* ───── REQUEST BODY (SUPPORTS messages[]) ───── */
+    /* ───── REQUEST BODY ───── */
     const body = await req.json()
     const chatbotId = body.chatbotId
     const messages = Array.isArray(body.messages) ? body.messages : []
     const history = Array.isArray(body.history) ? body.history : []
 
-    const lastMessage = messages.at(-1)?.content
+    const lastUserMessage = messages.at(-1)?.content
 
-    if (!chatbotId || !lastMessage) {
+    if (!chatbotId || !lastUserMessage) {
       return NextResponse.json(
         { error: 'Invalid request' },
         { status: 400, headers: corsHeaders }
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
       systemPrompt += `\n\nINSTRUCTIONS:\n${chatbot.instructions}`
     }
 
-    /* ───── DB CONTEXT (READ / WRITE) ───── */
+    /* ───── DB CONTEXT + CONFIRMATION RULES ───── */
     if (owner.supabase_url && owner.supabase_key_encrypted) {
       for (let i = 1; i <= 3; i++) {
         const table = chatbot[`data_table_${i}`]
@@ -161,17 +161,27 @@ export async function POST(req: Request) {
             owner.supabase_key_encrypted,
             table
           )
+
           if (schema) {
-            systemPrompt +=
-              `\n\nWhen confirmed, respond ONLY as:\n` +
-              `[ADD_DATA]{"tableName":"${table}","data":{...}}`
-            systemPrompt += `\nSchema:\n${JSON.stringify(schema, null, 2)}`
+            systemPrompt += `
+IMPORTANT DATA RULES:
+- NEVER insert data immediately
+- FIRST ask the user for all required fields
+- AFTER collecting values, ASK: "Should I save this? (yes/no)"
+- ONLY when the user clearly confirms (yes / confirm / save)
+- THEN respond ONLY in this exact format:
+[ADD_DATA]{"tableName":"${table}","data":{...}}
+- DO NOT add any text before or after [ADD_DATA]
+
+Schema:
+${JSON.stringify(schema, null, 2)}
+`
           }
         }
       }
     }
 
-    /* ───── AI CALL (WITH FALLBACK MODELS) ───── */
+    /* ───── AI CALL ───── */
     let responseData: any = null
 
     for (const model of [chatbot.model, ...POPULAR_MODELS]) {
@@ -213,13 +223,29 @@ export async function POST(req: Request) {
     const tokensUsed = responseData.usage?.total_tokens || 0
     let dbWriteOccurred = false
 
-    /* ───── ADD_DATA HANDLER ───── */
+    /* ───── CONFIRMATION GUARD (BACKEND SAFETY) ───── */
+    const lastText = lastUserMessage.toLowerCase()
+    const isConfirmed =
+      lastText.includes('yes') ||
+      lastText.includes('confirm') ||
+      lastText.includes('save')
+
+    if (reply.startsWith('[ADD_DATA]') && !isConfirmed) {
+      return NextResponse.json(
+        { reply: 'Please confirm before saving this information.' },
+        { headers: corsHeaders }
+      )
+    }
+
+    /* ───── ADD_DATA EXECUTION ───── */
     if (reply.startsWith('[ADD_DATA]')) {
       const payload = JSON.parse(reply.slice(10))
+
       const db = createClient(
         owner.supabase_url,
         owner.supabase_key_encrypted
       )
+
       await db.from(payload.tableName).insert([payload.data])
       dbWriteOccurred = true
       reply = `Done. Record added to ${payload.tableName}.`
