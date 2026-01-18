@@ -130,4 +130,4 @@ MIT License © 2026 HeHo
 
 ---
 
-**No code. No lock-in. Your data, your AI.***
+**No code. No lock-in. Your data, your AI.**
