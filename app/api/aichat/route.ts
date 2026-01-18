@@ -1,29 +1,12 @@
 import { createClient as createSupabaseAdminClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 const POPULAR_MODELS = [
   'allenai/olmo-3.1-32b-think:free',
   'xiaomi/mimo-v2-flash:free',
   'nvidia/nemotron-3-nano-30b-a3b:free',
   'mistralai/devstral-2512:free',
-  'nex-agi/deepseek-v3.1-nex-n1:free',
-  'arcee-ai/trinity-mini:free',
-  'tngtech/tng-r1t-chimera:free',
-  'kwaipilot/kat-coder-pro:free',
-  'nvidia/nemotron-nano-12b-v2-vl:free',
-  'alibaba/tongyi-deepresearch-30b-a3b:free',
-  'nvidia/nemotron-nano-9b-v2:free',
-  'openai/gpt-oss-120b:free',
-  'openai/gpt-oss-20b:free',
-  'z-ai/glm-4.5-air:free',
-  'qwen/qwen3-coder:free',
-  'moonshotai/kimi-k2:free',
-  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free',
-  'google/gemma-3n-e2b-it:free',
-  'tngtech/deepseek-r1t2-chimera:free',
-  'deepseek/deepseek-r1-0528:free',
-  'google/gemma-3n-e4b-it:free',
 ]
 
 const corsHeaders = {
@@ -38,20 +21,18 @@ async function getTableSchema(
   tableName: string
 ): Promise<any[] | null> {
   try {
-    const response = await fetch(`${supabaseUrl}/rest/v1/?apikey=${supabaseKey}`)
-    if (!response.ok) return null
+    const res = await fetch(`${supabaseUrl}/rest/v1/?apikey=${supabaseKey}`)
+    if (!res.ok) return null
 
-    const openapiSpec = await response.json()
-    const definition = openapiSpec.definitions?.[tableName]
-    if (!definition?.properties) return null
+    const spec = await res.json()
+    const def = spec.definitions?.[tableName]
+    if (!def?.properties) return null
 
-    return Object.keys(definition.properties)
+    return Object.keys(def.properties)
       .filter(c => !['id', 'created_at'].includes(c))
       .map(c => ({
         column_name: c,
-        data_type:
-          definition.properties[c].format ||
-          definition.properties[c].type,
+        data_type: def.properties[c].format || def.properties[c].type,
       }))
   } catch {
     return null
@@ -62,18 +43,18 @@ export async function OPTIONS() {
   return new NextResponse(null, { headers: corsHeaders })
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    /* ───────────── API KEY AUTH ───────────── */
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    /* ───── AUTH (HEHO API KEY) ───── */
+    const auth = req.headers.get('Authorization')
+    if (!auth?.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401, headers: corsHeaders }
       )
     }
 
-    const apiKey = authHeader.slice(7)
+    const apiKey = auth.slice(7)
     const supabaseAdmin = await createSupabaseAdminClient()
 
     const { data: apiUser } = await supabaseAdmin
@@ -89,8 +70,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    /* ───────────── REQUEST ───────────── */
-    const { message, history, chatbotId } = await request.json()
+    const userId = apiUser.id
+    const { message, history, chatbotId } = await req.json()
+
     if (!message || !chatbotId) {
       return NextResponse.json(
         { error: 'Invalid request' },
@@ -98,9 +80,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const userId = apiUser.id
-
-    /* ───────────── FETCH CHATBOT + OWNER ───────────── */
+    /* ───── FETCH CHATBOT + OWNER ───── */
     const { data: chatbot } = await supabaseAdmin
       .from('chatbots')
       .select(`
@@ -131,8 +111,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    /* ───────────── SYSTEM PROMPT ───────────── */
+    /* ───── SYSTEM PROMPT ───── */
     let systemPrompt = `You are a helpful AI assistant named ${chatbot.name}.`
+
+    if (chatbot.description) systemPrompt += ` ${chatbot.description}`
+    if (chatbot.instructions) {
+      systemPrompt += `\n\nINSTRUCTIONS:\n${chatbot.instructions}`
+    }
 
     if (owner.supabase_url && owner.supabase_key_encrypted) {
       for (let i = 1; i <= 3; i++) {
@@ -171,10 +156,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    /* ───────────── AI CALL ───────────── */
+    /* ───── AI CALL (FALLBACK MODELS) ───── */
     let responseData: any = null
 
     for (const model of [chatbot.model, ...POPULAR_MODELS]) {
+      if (!model) continue
+
       const res = await fetch(
         'https://openrouter.ai/api/v1/chat/completions',
         {
@@ -203,7 +190,7 @@ export async function POST(request: NextRequest) {
     if (!responseData) {
       return NextResponse.json(
         { error: 'AI failed' },
-        { status: 500, headers: corsHeaders }
+        { status: 502, headers: corsHeaders }
       )
     }
 
@@ -211,21 +198,19 @@ export async function POST(request: NextRequest) {
     const tokensUsed = responseData.usage?.total_tokens || 0
     let dbWriteOccurred = false
 
-    /* ───────────── INSERT (IDENTICAL LOGIC) ───────────── */
+    /* ───── ADD_DATA HANDLER ───── */
     if (reply.startsWith('[ADD_DATA]')) {
       const { tableName, data } = JSON.parse(reply.slice(10))
-
       const db = createClient(
         owner.supabase_url,
         owner.supabase_key_encrypted
       )
-
       await db.from(tableName).insert([data])
       dbWriteOccurred = true
       reply = `Done. Record added to ${tableName}.`
     }
 
-    /* ───────────── USAGE TRACKING ───────────── */
+    /* ───── USAGE TRACKING ───── */
     const month = new Date().toISOString().split('T')[0]
     const { data: existing } = await supabaseAdmin
       .from('usage')
@@ -261,7 +246,7 @@ export async function POST(request: NextRequest) {
   } catch (e: any) {
     console.error(e)
     return NextResponse.json(
-      { error: e.message },
+      { error: 'Server error' },
       { status: 500, headers: corsHeaders }
     )
   }
