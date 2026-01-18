@@ -2,6 +2,7 @@ import { createClient as createSupabaseAdminClient } from '@/lib/supabase/server
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
+/* ───────────────── MODELS ───────────────── */
 const POPULAR_MODELS = [
   'allenai/olmo-3.1-32b-think:free',
   'xiaomi/mimo-v2-flash:free',
@@ -9,12 +10,14 @@ const POPULAR_MODELS = [
   'mistralai/devstral-2512:free',
 ]
 
+/* ───────────────── CORS ───────────────── */
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
+/* ───────────────── TABLE SCHEMA ───────────────── */
 async function getTableSchema(
   supabaseUrl: string,
   supabaseKey: string,
@@ -39,10 +42,12 @@ async function getTableSchema(
   }
 }
 
+/* ───────────────── OPTIONS ───────────────── */
 export async function OPTIONS() {
   return new NextResponse(null, { headers: corsHeaders })
 }
 
+/* ───────────────── POST ───────────────── */
 export async function POST(req: Request) {
   try {
     /* ───── AUTH (HEHO API KEY) ───── */
@@ -71,9 +76,16 @@ export async function POST(req: Request) {
     }
 
     const userId = apiUser.id
-    const { message, history, chatbotId } = await req.json()
 
-    if (!message || !chatbotId) {
+    /* ───── REQUEST BODY (SUPPORTS messages[]) ───── */
+    const body = await req.json()
+    const chatbotId = body.chatbotId
+    const messages = Array.isArray(body.messages) ? body.messages : []
+    const history = Array.isArray(body.history) ? body.history : []
+
+    const lastMessage = messages.at(-1)?.content
+
+    if (!chatbotId || !lastMessage) {
       return NextResponse.json(
         { error: 'Invalid request' },
         { status: 400, headers: corsHeaders }
@@ -106,7 +118,7 @@ export async function POST(req: Request) {
     const owner = chatbot.users
     if (!owner?.openrouter_key_encrypted) {
       return NextResponse.json(
-        { error: 'API key missing' },
+        { error: 'OpenRouter key missing' },
         { status: 400, headers: corsHeaders }
       )
     }
@@ -119,6 +131,7 @@ export async function POST(req: Request) {
       systemPrompt += `\n\nINSTRUCTIONS:\n${chatbot.instructions}`
     }
 
+    /* ───── DB CONTEXT (READ / WRITE) ───── */
     if (owner.supabase_url && owner.supabase_key_encrypted) {
       for (let i = 1; i <= 3; i++) {
         const table = chatbot[`data_table_${i}`]
@@ -149,14 +162,16 @@ export async function POST(req: Request) {
             table
           )
           if (schema) {
-            systemPrompt += `\n\nWhen confirmed, respond ONLY as:\n[ADD_DATA]{"tableName":"${table}","data":{...}}`
+            systemPrompt +=
+              `\n\nWhen confirmed, respond ONLY as:\n` +
+              `[ADD_DATA]{"tableName":"${table}","data":{...}}`
             systemPrompt += `\nSchema:\n${JSON.stringify(schema, null, 2)}`
           }
         }
       }
     }
 
-    /* ───── AI CALL (FALLBACK MODELS) ───── */
+    /* ───── AI CALL (WITH FALLBACK MODELS) ───── */
     let responseData: any = null
 
     for (const model of [chatbot.model, ...POPULAR_MODELS]) {
@@ -174,8 +189,8 @@ export async function POST(req: Request) {
             model,
             messages: [
               { role: 'system', content: systemPrompt },
-              ...(history || []),
-              { role: 'user', content: message },
+              ...history,
+              ...messages,
             ],
           }),
         }
@@ -200,14 +215,14 @@ export async function POST(req: Request) {
 
     /* ───── ADD_DATA HANDLER ───── */
     if (reply.startsWith('[ADD_DATA]')) {
-      const { tableName, data } = JSON.parse(reply.slice(10))
+      const payload = JSON.parse(reply.slice(10))
       const db = createClient(
         owner.supabase_url,
         owner.supabase_key_encrypted
       )
-      await db.from(tableName).insert([data])
+      await db.from(payload.tableName).insert([payload.data])
       dbWriteOccurred = true
-      reply = `Done. Record added to ${tableName}.`
+      reply = `Done. Record added to ${payload.tableName}.`
     }
 
     /* ───── USAGE TRACKING ───── */
@@ -243,7 +258,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ reply }, { headers: corsHeaders })
-  } catch (e: any) {
+  } catch (e) {
     console.error(e)
     return NextResponse.json(
       { error: 'Server error' },
