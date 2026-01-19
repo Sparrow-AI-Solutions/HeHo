@@ -260,7 +260,7 @@ export default function SharedChatbotPage() {
 
       {/* INPUT */}
       <footer className="sticky bottom-0 border-t border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-black">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex gap-2">
+        <form onSubmit={handleSendMessage} className="max-w-2xl mx-auto px-4 py-3 flex gap-2">
           <Input
             placeholder={`Message ${chatbot.name}...`}
             value={input}
@@ -270,13 +270,12 @@ export default function SharedChatbotPage() {
           />
           <Button
             type="submit"
-            onClick={handleSendMessage}
             disabled={sending || !input.trim() || limitReached}
             className="p-3 rounded-full bg-gray-800 text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
             {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </Button>
-        </div>
+        </form>
         <p className="text-xs text-center text-gray-500 dark:text-gray-400 pt-2">
           Powered by <a href="https://heho.vercel.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700 dark:hover:text-gray-200">HeHo</a>.
         </p>
