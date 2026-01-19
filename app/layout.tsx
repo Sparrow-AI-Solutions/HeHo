@@ -96,6 +96,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+      </head>
       <body className="bg-background text-foreground">
         <ThemeProvider
             attribute="class"
