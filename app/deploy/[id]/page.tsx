@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { useParams } from 'next/navigation'
 import { Send, Loader2 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface Message {
   id: string
@@ -234,13 +236,13 @@ export default function SharedChatbotPage() {
             {messages.map(msg => (
               <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`px-4 py-3 rounded-lg max-w-[75%] whitespace-pre-wrap ${
+                  className={`px-4 py-3 rounded-lg max-w-[75%] prose dark:prose-invert ${
                     msg.role === 'user'
                       ? `${selectedTheme.color} ${selectedTheme.textColor} rounded-br-none border border-white/30` // user messages themed
-                      : 'bg-white dark:bg-black text-black dark:text-white rounded-bl-none border border-gray-300 dark:border-gray-700' // assistant always white/black manually
+                      : 'bg-white dark:bg-gray-800 text-black dark:text-white rounded-bl-none border border-gray-300 dark:border-gray-700' // assistant always white/black manually
                   }`}
                 >
-                  {msg.content}
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
               </div>
             ))}

@@ -9,6 +9,8 @@ import { Card } from "@/components/ui/card"
 import { useRouter, useParams } from "next/navigation"
 import { Send, Loader2, ArrowLeft, Settings, Rocket } from "lucide-react"
 import Link from "next/link"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 /* ================= TYPES ================= */
 
@@ -208,13 +210,13 @@ export default function ChatbotPage() {
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`px-4 py-3 rounded-lg max-w-xs shadow ${
+                  className={`px-4 py-3 rounded-lg max-w-xs shadow prose dark:prose-invert ${
                     m.role === "user"
                       ? `${selectedTheme.color} ${selectedTheme.textColor}`
-                      : "bg-white dark:bg-black text-black dark:text-white border border-gray-300 dark:border-gray-700"
+                      : "bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-300 dark:border-gray-700"
                   }`}
                 >
-                  {m.content}
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                 </div>
               </div>
             ))}
