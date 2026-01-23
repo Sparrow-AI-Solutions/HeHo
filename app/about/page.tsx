@@ -34,6 +34,8 @@ export default function AboutPage() {
               or workflow automation tools, HeHo provides the foundation to build
               scalable, secure, and meaningful chatbot experiences that truly
               understand your data and your business context.
+              <br /><br />
+              HeHo is owned and founded by Sparrow AI Solutions.
             </p>
           </div>
 
