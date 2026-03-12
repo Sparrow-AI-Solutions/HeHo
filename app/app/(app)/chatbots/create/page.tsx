@@ -15,40 +15,13 @@ import Link from 'next/link'
 import { Checkbox } from '@/components/ui/checkbox'
 
 const POPULAR_MODELS = [
-    { id: "allenai/olmo-3.1-32b-think:free", name: "AllenAI: Olmo 3.1 32B Think" },
-    { id: "xiaomi/mimo-v2-flash:free", name: "Xiaomi: MiMo-V2-Flash" },
-    { id: "nvidia/nemotron-3-nano-30b-a3b:free", name: "NVIDIA: Nemotron 3 Nano 30B A3B" },
-    { id: "mistralai/devstral-2512:free", name: "Mistral: Devstral 2 2512" },
-    { id: "nex-agi/deepseek-v3.1-nex-n1:free", name: "Nex AGI: DeepSeek V3.1 Nex N1" },
+    { id: "arcee-ai/trinity-large-preview:free", name: "Arcee AI: Trinity Large Preview" },
     { id: "arcee-ai/trinity-mini:free", name: "Arcee AI: Trinity Mini" },
-    { id: "tngtech/tng-r1t-chimera:free", name: "TNG: R1T Chimera" },
-    { id: "kwaipilot/kat-coder-pro:free", name: "Kwaipilot: KAT-Coder-Pro V1" },
-    { id: "nvidia/nemotron-nano-12b-v2-vl:free", name: "NVIDIA: Nemotron Nano 12B 2 VL" },
-    { id: "alibaba/tongyi-deepresearch-30b-a3b:free", name: "Tongyi DeepResearch 30B A3B" },
-    { id: "nvidia/nemotron-nano-9b-v2:free", name: "NVIDIA: Nemotron Nano 9B V2" },
-    { id: "openai/gpt-oss-120b:free", name: "OpenAI: gpt-oss-120b" },
-    { id: "openai/gpt-oss-20b:free", name: "OpenAI: gpt-oss-20b" },
-    { id: "z-ai/glm-4.5-air:free", name: "Z.AI: GLM 4.5 Air" },
-    { id: "qwen/qwen3-coder:free", name: "Qwen: Qwen3 Coder 480B A35B" },
-    { id: "moonshotai/kimi-k2:free", name: "MoonshotAI: Kimi K2 0711" },
-    { id: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", name: "Venice: Uncensored" },
-    { id: "google/gemma-3n-e2b-it:free", name: "Google: Gemma 3n 2B" },
-    { id: "tngtech/deepseek-r1t2-chimera:free", name: "TNG: DeepSeek R1T2 Chimera" },
-    { id: "deepseek/deepseek-r1-0528:free", name: "DeepSeek: R1 0528" },
-    { id: "google/gemma-3n-e4b-it:free", name: "Google: Gemma 3n 4B" },
-    { id: "qwen/qwen3-4b:free", name: "Qwen: Qwen3 4B" },
-    { id: "tngtech/deepseek-r1t-chimera:free", name: "TNG: DeepSeek R1T Chimera" },
-    { id: "mistralai/mistral-small-3.1-24b-instruct:free", name: "Mistral: Mistral Small 3.1 24B" },
-    { id: "google/gemma-3-4b-it:free", name: "Google: Gemma 3 4B" },
-    { id: "google/gemma-3-12b-it:free", name: "Google: Gemma 3 12B" },
-    { id: "google/gemma-3-27b-it:free", name: "Google: Gemma 3 27B" },
-    { id: "google/gemini-2.0-flash-exp:free", name: "Google: Gemini 2.0 Flash Experimental" },
-    { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Meta: Llama 3.3 70B Instruct" },
-    { id: "meta-llama/llama-3.2-3b-instruct:free", name: "Meta: Llama 3.2 3B Instruct" },
-    { id: "qwen/qwen-2.5-vl-7b-instruct:free", name: "Qwen: Qwen2.5-VL 7B Instruct" },
-    { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Nous: Hermes 3 405B Instruct" },
-    { id: "meta-llama/llama-3.1-405b-instruct:free", name: "Meta: Llama 3.1 405B Instruct" },
-    { id: "mistralai/mistral-7b-instruct:free", name: "Mistral: Mistral 7B Instruct" }
+    { id: "liquid/lfm-2.5-1.2b-thinking:free", name: "Liquid: LFM 2.5 1.2B Thinking" },
+    { id: "qwen/qwen3-next-80b-a3b-instruct:free", name: "Qwen: Qwen3 Next 80B Instruct" },
+    { id: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", name: "Venice: Dolphin Mistral 24B" },
+    { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Nous: Hermes 3 Llama 3.1 405B" },
+    { id: "openrouter/hunter-alpha", name: "OpenRouter: Hunter Alpha" },
 ];
 
 const GOALS = [
@@ -231,14 +204,6 @@ export default function CreateChatbotPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className='min-h-screen bg-background flex items-center justify-center'>
-        <Loader2 className='h-8 w-8 animate-spin text-primary' />
-      </div>
-    )
-  }
-
   const renderDataSourceSelect = (index: 1 | 2 | 3) => (
     <div className='space-y-2'>
       <label className='block text-sm font-medium text-foreground mb-2'>Data Source {index} (Optional)</label>
@@ -253,231 +218,227 @@ export default function CreateChatbotPage() {
           <SelectItem value='_none_'>None</SelectItem>
           {allDataSources.map((tableName) => (
             <SelectItem key={tableName} value={tableName}>
-              <div className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                {tableName}
-              </div>
+              {tableName}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <div className='flex items-center space-x-4'>
-        <div className='flex items-center space-x-2'>
-          <Checkbox
-            id={`read-${index}`}
-            checked={formData[`data_table_${index}_read`]}
-            onCheckedChange={(checked) => setFormData({ ...formData, [`data_table_${index}_read`]: !!checked })}
-          />
-          <label htmlFor={`read-${index}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Read</label>
+      
+      {formData[`data_table_${index}`] && formData[`data_table_${index}`] !== '_none_' && (
+        <div className="flex gap-4 mt-2 p-3 bg-white/5 rounded-lg border border-white/10">
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id={`read-${index}`} 
+              checked={formData[`data_table_${index}_read`]}
+              onCheckedChange={(checked) => setFormData({ ...formData, [`data_table_${index}_read`]: !!checked })}
+            />
+            <label htmlFor={`read-${index}`} className="text-xs text-muted-foreground cursor-pointer">Allow Read</label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id={`write-${index}`} 
+              checked={formData[`data_table_${index}_write`]}
+              onCheckedChange={(checked) => setFormData({ ...formData, [`data_table_${index}_write`]: !!checked })}
+            />
+            <label htmlFor={`write-${index}`} className="text-xs text-muted-foreground cursor-pointer">Allow Write</label>
+          </div>
         </div>
-        <div className='flex items-center space-x-2'>
-           <Checkbox
-            id={`write-${index}`}
-            checked={formData[`data_table_${index}_write`]}
-            onCheckedChange={(checked) => setFormData({ ...formData, [`data_table_${index}_write`]: !!checked })}
-          />
-          <label htmlFor={`write-${index}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Write</label>
-        </div>
-      </div>
+      )}
     </div>
   )
 
-
   return (
-    <div className='min-h-screen bg-background'>
-      <div className='container mx-auto px-4 py-12 max-w-3xl'>
-        <Link href='/app/dashboard' className='text-primary hover:underline mb-8 block'>
-          ← Back to Dashboard
-        </Link>
+    <div className='min-h-screen bg-background pb-20'>
+      <div className='container mx-auto px-4 pt-8 max-w-4xl'>
+        <div className='flex items-center gap-4 mb-8'>
+          <Button variant='ghost' size='icon' onClick={() => router.back()}>
+            <ArrowLeft className='h-5 w-5' />
+          </Button>
+          <div>
+            <h1 className='text-3xl font-bold text-foreground'>Create New Chatbot</h1>
+            <p className='text-muted-foreground'>Configure your AI assistant and connect it to your data</p>
+          </div>
+        </div>
 
-        {chatbotCount > 50 ? (
-          <Card className='border-border/50 bg-card/50'>
-            <CardHeader>
-              <CardTitle className='text-2xl'>Free Plan Limit Reached</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className='text-muted-foreground mb-4'>
-                You have reached the maximum of 50 chatbots for the free plan. Please upgrade to a paid plan to create
-                more chatbots.
-              </p>
-              <Button disabled>Create Chatbot</Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className='border-border/50 bg-card/50'>
-            <CardHeader>
-              <CardTitle className='text-3xl'>Create New Chatbot</CardTitle>
-              <CardDescription>Set up your AI chatbot with just a few details</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateChatbot} className='space-y-6'>
-                {/* Name */}
-                <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>Chatbot Name *</label>
-                  <Input
-                    placeholder='e.g., Customer Support Bot'
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className='bg-background/50 border-border/50'
-                    maxLength={50}
-                  />
-                  <p className='text-xs text-muted-foreground mt-1'>{formData.name.length}/50 characters</p>
-                </div>
-
-                {/* Goal */}
-                <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>Chatbot Goal *</label>
-                  <Select value={formData.goal} onValueChange={(value) => setFormData({ ...formData, goal: value })}>
-                    <SelectTrigger className='bg-background/50 border-border/50'>
-                      <SelectValue placeholder='Select a goal' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GOALS.map((g) => (
-                        <SelectItem key={g.value} value={g.value}>
-                          {g.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Project Description */}
-                <div>
-                  <div className='flex justify-between items-center mb-2'>
-                    <label className='block text-sm font-medium text-foreground'>Project Description *</label>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      onClick={generatePromptFromGoal}
-                      disabled={generatingPrompt || !formData.name || !formData.goal}
-                      className='border-border/50 text-foreground hover:bg-white/10 bg-transparent h-8 text-xs'
-                    >
-                      {generatingPrompt ? (
-                        <>
-                          <Loader2 className='mr-1 h-3 w-3 animate-spin' />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className='mr-1 h-3 w-3' />
-                          AI Generate
-                        </>
-                      )}
-                    </Button>
+        <form onSubmit={handleCreateChatbot} className='space-y-8'>
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
+            {/* Left Column: Basic Config */}
+            <div className='md:col-span-2 space-y-6'>
+              <Card className='bg-card/50 border-border/50'>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                    <Sparkles className='h-5 w-5 text-primary' />
+                    Identity & Intelligence
+                  </CardTitle>
+                  <CardDescription>Define who your chatbot is and how it thinks</CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                  <div className='space-y-2'>
+                    <label className='text-sm font-medium'>Chatbot Name</label>
+                    <Input
+                      placeholder='e.g. Customer Support Bot'
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className='bg-background/50 border-border/50'
+                    />
                   </div>
-                  <Textarea
-                    placeholder='Describe your project in detail. Include: What your app does, what data exists in your Supabase, what users will ask, what the chatbot should never do, any business rules.'
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className='bg-background/50 border-border/50 min-h-32'
-                    maxLength={5000}
-                  />
-                  <p className='text-xs text-muted-foreground mt-1'>
-                    {formData.description.length}/5000 characters (min 200 required)
-                  </p>
-                </div>
-                
-                {renderDataSourceSelect(1)}
-                {renderDataSourceSelect(2)}
-                {renderDataSourceSelect(3)}
 
-                {allDataSources.length === 0 && (
-                  <p className='text-xs text-muted-foreground mt-2'>No database tables found. <Link href="/app/database" className="text-primary hover:underline">Connect one here</Link>.</p>
-                )}
+                  <div className='space-y-2'>
+                    <label className='text-sm font-medium'>Primary Goal</label>
+                    <Select value={formData.goal} onValueChange={(value) => setFormData({ ...formData, goal: value })}>
+                      <SelectTrigger className='bg-background/50 border-border/50'>
+                        <SelectValue placeholder='What is the main purpose?' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GOALS.map((goal) => (
+                          <SelectItem key={goal.value} value={goal.value}>
+                            {goal.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Tone */}
-                <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>Tone (Optional)</label>
-                  <Select value={formData.tone} onValueChange={(value) => setFormData({ ...formData, tone: value })}>
-                    <SelectTrigger className='bg-background/50 border-border/50'>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TONES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}</SelectContent>
-                  </Select>
-                </div>
-
-                {/* AI Model */}
-                <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>AI Model *</label>
-                  <Select value={formData.model} onValueChange={(value) => setFormData({ ...formData, model: value })}>
-                    <SelectTrigger className='bg-background/50 border-border/50'>
-                      <SelectValue placeholder='Select an AI model' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {POPULAR_MODELS.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>Theme (Optional)</label>
-                  <div className='grid grid-cols-4 gap-2'>
-                    {THEMES.map((t) => (
-                      <button
-                        key={t.value}
+                  <div className='space-y-2'>
+                    <div className='flex justify-between items-center'>
+                      <label className='text-sm font-medium'>System Prompt (Project Description)</label>
+                      <Button
                         type='button'
-                        onClick={() => setFormData({ ...formData, theme: t.value })}
-                        className={`aspect-square rounded-lg border-2 transition-all ${
-                          formData.theme === t.value ? 'border-white' : 'border-border/50'
-                        } ${t.color}`}
-                        title={t.label}
+                        variant='outline'
+                        size='sm'
+                        onClick={generatePromptFromGoal}
+                        disabled={generatingPrompt}
+                        className='h-8'
                       >
-                        <span className='sr-only'>{t.label}</span>
-                      </button>
+                        {generatingPrompt ? (
+                          <Loader2 className='h-3 w-3 animate-spin mr-2' />
+                        ) : (
+                          <Sparkles className='h-3 w-3 mr-2' />
+                        )}
+                        Auto-Generate
+                      </Button>
+                    </div>
+                    <Textarea
+                      placeholder='Describe your project and how the chatbot should behave in detail (min 200 chars)...'
+                      className='min-h-[200px] bg-background/50 border-border/50'
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    />
+                    <p className='text-[10px] text-muted-foreground'>
+                      Characters: {formData.description.length} / 200 minimum
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className='bg-card/50 border-border/50'>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                    <Database className='h-5 w-5 text-primary' />
+                    Data Connectivity
+                  </CardTitle>
+                  <CardDescription>Connect your chatbot to your Supabase tables</CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-6'>
+                  {renderDataSourceSelect(1)}
+                  {renderDataSourceSelect(2)}
+                  {renderDataSourceSelect(3)}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column: Model & Style */}
+            <div className='space-y-6'>
+              <Card className='bg-card/50 border-border/50'>
+                <CardHeader>
+                  <CardTitle className='text-lg'>Model & Tone</CardTitle>
+                </CardHeader>
+                <CardContent className='space-y-6'>
+                  <div className='space-y-2'>
+                    <label className='text-sm font-medium'>AI Model</label>
+                    <Select value={formData.model} onValueChange={(value) => setFormData({ ...formData, model: value })}>
+                      <SelectTrigger className='bg-background/50 border-border/50'>
+                        <SelectValue placeholder='Select an AI model' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {POPULAR_MODELS.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className='text-[10px] text-muted-foreground'>
+                      Powered by OpenRouter. Switch anytime in settings.
+                    </p>
+                  </div>
+
+                  <div className='space-y-2'>
+                    <label className='text-sm font-medium'>Communication Tone</label>
+                    <div className='grid grid-cols-1 gap-2'>
+                      {TONES.map((tone) => (
+                        <Button
+                          key={tone.value}
+                          type='button'
+                          variant={formData.tone === tone.value ? 'default' : 'outline'}
+                          className='justify-start h-9'
+                          onClick={() => setFormData({ ...formData, tone: tone.value })}
+                        >
+                          {tone.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className='bg-card/50 border-border/50'>
+                <CardHeader>
+                  <CardTitle className='text-lg'>Chat Theme</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='grid grid-cols-4 gap-2'>
+                    {THEMES.map((theme) => (
+                      <button
+                        key={theme.value}
+                        type='button'
+                        className={`h-10 rounded-md transition-all ${theme.color} ${
+                          formData.theme === theme.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+                        }`}
+                        onClick={() => setFormData({ ...formData, theme: theme.value })}
+                        title={theme.label}
+                      />
                     ))}
                   </div>
-                  <p className='text-xs text-muted-foreground mt-2'>
-                    Selected: {THEMES.find((t) => t.value === formData.theme)?.label}
-                  </p>
-                </div>
+                </CardContent>
+              </Card>
 
-                <Alert>
-                  <AlertCircle className='h-4 w-4' />
-                  <AlertDescription>
-                    Use AI Generate to automatically create a detailed prompt based on your chatbot's goal
-                  </AlertDescription>
-                </Alert>
-
-                {error && (
-                  <Alert className='border-destructive/50 bg-destructive/5'>
-                    <AlertCircle className='h-4 w-4 text-destructive' />
-                    <AlertDescription className='text-destructive'>{error}</AlertDescription>
-                  </Alert>
+              <Button type='submit' className='w-full h-12 text-lg font-bold' disabled={creating}>
+                {creating ? (
+                  <>
+                    <Loader2 className='mr-2 h-5 w-5 animate-spin' />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    Create Chatbot
+                    <ArrowRight className='ml-2 h-5 w-5' />
+                  </>
                 )}
+              </Button>
 
-                <Button
-                  type='submit'
-                  disabled={creating}
-                  className='w-full bg-primary hover:bg-primary/90 text-primary-foreground'
-                  size='lg'
-                >
-                  {creating ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      Create Chatbot
-                      <ArrowRight className='ml-2 h-4 w-4' />
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+              {error && (
+                <Alert variant='destructive' className='bg-destructive/10 border-destructive/20'>
+                  <AlertCircle className='h-4 w-4' />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   )
 }
+
+import { ArrowLeft } from 'lucide-react'

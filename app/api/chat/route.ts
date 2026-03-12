@@ -3,27 +3,13 @@ import { createClient } from '@supabase/supabase-js'
 import { type NextRequest, NextResponse } from 'next/server'
 
 const POPULAR_MODELS = [
-  'allenai/olmo-3.1-32b-think:free',
-  'xiaomi/mimo-v2-flash:free',
-  'nvidia/nemotron-3-nano-30b-a3b:free',
-  'mistralai/devstral-2512:free',
-  'nex-agi/deepseek-v3.1-nex-n1:free',
-  'arcee-ai/trinity-mini:free',
-  'tngtech/tng-r1t-chimera:free',
-  'kwaipilot/kat-coder-pro:free',
-  'nvidia/nemotron-nano-12b-v2-vl:free',
-  'alibaba/tongyi-deepresearch-30b-a3b:free',
-  'nvidia/nemotron-nano-9b-v2:free',
-  'openai/gpt-oss-120b:free',
-  'openai/gpt-oss-20b:free',
-  'z-ai/glm-4.5-air:free',
-  'qwen/qwen3-coder:free',
-  'moonshotai/kimi-k2:free',
-  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free',
-  'google/gemma-3n-e2b-it:free',
-  'tngtech/deepseek-r1t2-chimera:free',
-  'deepseek/deepseek-r1-0528:free',
-  'google/gemma-3n-e4b-it:free',
+  "arcee-ai/trinity-large-preview:free",
+  "arcee-ai/trinity-mini:free",
+  "liquid/lfm-2.5-1.2b-thinking:free",
+  "qwen/qwen3-next-80b-a3b-instruct:free",
+  "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+  "nousresearch/hermes-3-llama-3.1-405b:free",
+  "openrouter/hunter-alpha",
 ]
 
 async function getTableSchema(

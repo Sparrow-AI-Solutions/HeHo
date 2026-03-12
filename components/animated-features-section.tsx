@@ -135,9 +135,9 @@ export function AnimatedFeaturesSection() {
   const baseFeatures = [
     {
       title: "Free AI Models",
-      value: "35+ Models",
+      value: "Free Models",
       subtitle:
-        "Access to 35+ free models from OpenRouter including Llama, Mistral, Gemma, and more.",
+        "Access to free models from OpenRouter including Llama, Mistral, Gemma, and more.",
       darkColors: ["#1a1a1a", "#2a2a2a", "#1f1f1f"],
       lightColors: [],
       colSpan: "md:col-span-2",

@@ -2,12 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 const models = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "allenai/olmo-3.1-32b-think:free",
-    "xiaomi/mimo-v2-flash:free",
-    "nvidia/nemotron-3-nano-30b-a3b:free",
-    "mistralai/devstral-2512:free",
-    "nex-agi/deepseek-v3.1-nex-n1:free",
+    "arcee-ai/trinity-large-preview:free",
+    "arcee-ai/trinity-mini:free",
+    "liquid/lfm-2.5-1.2b-thinking:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free",
+    "openrouter/hunter-alpha",
 ];
 
 export async function POST(request: Request) {

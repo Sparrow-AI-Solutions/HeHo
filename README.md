@@ -10,7 +10,7 @@ HeHo is a completely open-source platform for building powerful, context-aware A
 - 🧩 No-code AI chatbot builder  
 - 🔓 100% open-source  
 - 🗄️ Connect **your own Supabase database**  
-- 🤖 Powered by **OpenRouter** (35+ free AI models)  
+- 🤖 Powered by **OpenRouter** (Free AI models)  
 - 🔐 Fine-grained database permissions  
 - 📖 Chatbots can read data and create new entries  
 - 🧠 Reduced AI hallucinations via controlled DB access  
@@ -65,7 +65,7 @@ To power your chatbot’s AI:
 2. Generate an API key  
 3. Paste the key into HeHo’s dashboard  
 
-This unlocks **35+ free AI models** including Llama, Mistral, and Gemma.
+This unlocks **Free AI models** including Llama, Mistral, and Gemma.
 
 ---
 
@@ -112,7 +112,7 @@ This ensures answers are grounded in **real data**, not guesses.
 
 - 🔑 HeHo API keys for no-code app integrations  
 - ✏️ Permission-based editing of existing data  
-- 🎨 AI-generated chatbot UI  
+- 🎨 AI-generated chatbot UIs  
 - 👥 Team collaboration & roles  
 
 ---

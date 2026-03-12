@@ -4,241 +4,54 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
 const aiModels = [
-  // Free Tier - Tier 1
   {
-    name: "Meta: Llama 3.3 70B Instruct",
-    id: "meta-llama/llama-3.3-70b-instruct:free",
-    provider: "Meta",
+    name: "Arcee AI: Trinity Large Preview",
+    id: "arcee-ai/trinity-large-preview:free",
+    provider: "Arcee AI",
     contextSize: "131,072",
-    bestFor: "General purpose, long context",
-  },
-  {
-    name: "Google: Gemini 2.0 Flash Experimental",
-    id: "google/gemini-2.0-flash-exp:free",
-    provider: "Google",
-    contextSize: "1,048,576",
-    bestFor: "Long-context reasoning",
-  },
-  {
-    name: "Mistral: Mistral Small 3.1 24B",
-    id: "mistralai/mistral-small-3.1-24b-instruct:free",
-    provider: "Mistral",
-    contextSize: "128,000",
-    bestFor: "Fast, efficient",
-  },
-  {
-    name: "Google: Gemma 3 12B",
-    id: "google/gemma-3-12b-it:free",
-    provider: "Google",
-    contextSize: "32,768",
-    bestFor: "Lightweight, fast",
-  },
-  {
-    name: "Meta: Llama 3.1 405B Instruct",
-    id: "meta-llama/llama-3.1-405b-instruct:free",
-    provider: "Meta",
-    contextSize: "131,072",
-    bestFor: "Complex reasoning",
-  },
-  {
-    name: "Nous: Hermes 3 405B Instruct",
-    id: "nousresearch/hermes-3-llama-3.1-405b:free",
-    provider: "Nous",
-    contextSize: "131,072",
-    bestFor: "Instruction following",
-  },
-  {
-    name: "Google: Gemma 3 27B",
-    id: "google/gemma-3-27b-it:free",
-    provider: "Google",
-    contextSize: "131,072",
-    bestFor: "Balanced performance",
-  },
-  {
-    name: "Google: Gemma 3 4B",
-    id: "google/gemma-3-4b-it:free",
-    provider: "Google",
-    contextSize: "32,768",
-    bestFor: "Quick responses",
-  },
-  {
-    name: "Qwen: Qwen2.5-VL 7B Instruct",
-    id: "qwen/qwen-2.5-vl-7b-instruct:free",
-    provider: "Qwen",
-    contextSize: "32,768",
-    bestFor: "Vision tasks",
-  },
-  {
-    name: "Qwen: Qwen3 4B",
-    id: "qwen/qwen3-4b:free",
-    provider: "Qwen",
-    contextSize: "40,960",
-    bestFor: "Compact model",
-  },
-
-  // Free Tier - Tier 2
-  {
-    name: "Mistral: Mistral 7B Instruct",
-    id: "mistralai/mistral-7b-instruct:free",
-    provider: "Mistral",
-    contextSize: "32,768",
-    bestFor: "Fast responses",
-  },
-  {
-    name: "Qwen: Qwen3 Coder 480B",
-    id: "qwen/qwen3-coder:free",
-    provider: "Qwen",
-    contextSize: "262,000",
-    bestFor: "Code generation",
-  },
-  {
-    name: "Z.AI: GLM 4.5 Air",
-    id: "z-ai/glm-4.5-air:free",
-    provider: "Z.AI",
-    contextSize: "131,072",
-    bestFor: "Chinese/English",
-  },
-  {
-    name: "MoonshotAI: Kimi K2 0711",
-    id: "moonshotai/kimi-k2:free",
-    provider: "MoonshotAI",
-    contextSize: "32,768",
-    bestFor: "Knowledge base",
-  },
-  {
-    name: "DeepSeek: R1 0528",
-    id: "deepseek/deepseek-r1-0528:free",
-    provider: "DeepSeek",
-    contextSize: "163,840",
-    bestFor: "Reasoning tasks",
-  },
-  {
-    name: "TNG: DeepSeek R1T Chimera",
-    id: "tngtech/deepseek-r1t-chimera:free",
-    provider: "TNG",
-    contextSize: "163,840",
-    bestFor: "Advanced reasoning",
-  },
-  {
-    name: "TNG: DeepSeek R1T2 Chimera",
-    id: "tngtech/deepseek-r1t2-chimera:free",
-    provider: "TNG",
-    contextSize: "163,840",
-    bestFor: "Latest R1T2",
-  },
-  {
-    name: "Venice: Uncensored Dolphin Mistral",
-    id: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-    provider: "Venice",
-    contextSize: "32,768",
-    bestFor: "Uncensored responses",
-  },
-  {
-    name: "Google: Gemma 3n 2B",
-    id: "google/gemma-3n-e2b-it:free",
-    provider: "Google",
-    contextSize: "8,192",
-    bestFor: "Ultra-lightweight",
-  },
-  {
-    name: "Google: Gemma 3n 4B",
-    id: "google/gemma-3n-e4b-it:free",
-    provider: "Google",
-    contextSize: "8,192",
-    bestFor: "Minimal footprint",
-  },
-
-  // Advanced Free Models
-  {
-    name: "AllenAI: Olmo 3.1 32B Think",
-    id: "allenai/olmo-3.1-32b-think:free",
-    provider: "AllenAI",
-    contextSize: "65,536",
-    bestFor: "Thinking model",
-  },
-  {
-    name: "AllenAI: Olmo 3 32B Think",
-    id: "allenai/olmo-3-32b-think:free",
-    provider: "AllenAI",
-    contextSize: "65,536",
-    bestFor: "Reasoning",
-  },
-  {
-    name: "Xiaomi: MiMo-V2-Flash",
-    id: "xiaomi/mimo-v2-flash:free",
-    provider: "Xiaomi",
-    contextSize: "262,144",
-    bestFor: "Multimodal",
-  },
-  {
-    name: "NVIDIA: Nemotron 3 Nano 30B",
-    id: "nvidia/nemotron-3-nano-30b-a3b:free",
-    provider: "NVIDIA",
-    contextSize: "256,000",
-    bestFor: "Efficient reasoning",
-  },
-  {
-    name: "Mistral: Devstral 2512",
-    id: "mistralai/devstral-2512:free",
-    provider: "Mistral",
-    contextSize: "262,144",
-    bestFor: "Developer tasks",
-  },
-  {
-    name: "Nex AGI: DeepSeek V3.1 Nex N1",
-    id: "nex-agi/deepseek-v3.1-nex-n1:free",
-    provider: "Nex AGI",
-    contextSize: "131,072",
-    bestFor: "Latest model",
+    bestFor: "High-performance reasoning",
   },
   {
     name: "Arcee AI: Trinity Mini",
     id: "arcee-ai/trinity-mini:free",
     provider: "Arcee AI",
     contextSize: "131,072",
-    bestFor: "Compact",
+    bestFor: "Fast, efficient responses",
   },
   {
-    name: "Kwaipilot: KAT-Coder-Pro V1",
-    id: "kwaipilot/kat-coder-pro:free",
-    provider: "Kwaipilot",
-    contextSize: "256,000",
-    bestFor: "Code generation",
+    name: "Liquid: LFM 2.5 1.2B Thinking",
+    id: "liquid/lfm-2.5-1.2b-thinking:free",
+    provider: "Liquid",
+    contextSize: "32,768",
+    bestFor: "Complex step-by-step reasoning",
   },
   {
-    name: "NVIDIA: Nemotron Nano 12B V2 VL",
-    id: "nvidia/nemotron-nano-12b-v2-vl:free",
-    provider: "NVIDIA",
+    name: "Qwen: Qwen3 Next 80B Instruct",
+    id: "qwen/qwen3-next-80b-a3b-instruct:free",
+    provider: "Qwen",
+    contextSize: "131,072",
+    bestFor: "Large-scale general purpose",
+  },
+  {
+    name: "Venice: Dolphin Mistral 24B",
+    id: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+    provider: "Venice",
+    contextSize: "32,768",
+    bestFor: "Uncensored, creative tasks",
+  },
+  {
+    name: "Nous: Hermes 3 Llama 3.1 405B",
+    id: "nousresearch/hermes-3-llama-3.1-405b:free",
+    provider: "Nous",
+    contextSize: "131,072",
+    bestFor: "Instruction following, complex logic",
+  },
+  {
+    name: "OpenRouter: Hunter Alpha",
+    id: "openrouter/hunter-alpha",
+    provider: "OpenRouter",
     contextSize: "128,000",
-    bestFor: "Vision+Language",
-  },
-  {
-    name: "Alibaba: Tongyi DeepResearch 30B",
-    id: "alibaba/tongyi-deepresearch-30b-a3b:free",
-    provider: "Alibaba",
-    contextSize: "131,072",
-    bestFor: "Research tasks",
-  },
-  {
-    name: "NVIDIA: Nemotron Nano 9B V2",
-    id: "nvidia/nemotron-nano-9b-v2:free",
-    provider: "NVIDIA",
-    contextSize: "128,000",
-    bestFor: "Lightweight",
-  },
-  {
-    name: "OpenAI: GPT-OSS 120B",
-    id: "openai/gpt-oss-120b:free",
-    provider: "OpenAI",
-    contextSize: "131,072",
-    bestFor: "General purpose",
-  },
-  {
-    name: "OpenAI: GPT-OSS 20B",
-    id: "openai/gpt-oss-20b:free",
-    provider: "OpenAI",
-    contextSize: "131,072",
-    bestFor: "Compact",
+    bestFor: "Experimental high-quality output",
   },
 ]
 
@@ -248,7 +61,7 @@ export default function ModelsPage() {
       <Header />
       <main className="pt-32 pb-20">
         <div className="container mx-auto px-4 max-w-6xl">
-          <h1 className="text-5xl font-bold text-foreground mb-6 text-center">35+ Free AI Models</h1>
+          <h1 className="text-5xl font-bold text-foreground mb-6 text-center">Free AI Models</h1>
           <p className="text-lg text-muted-foreground text-center mb-4">
             Powered by OpenRouter - All completely free, all available right now
           </p>
@@ -281,17 +94,16 @@ export default function ModelsPage() {
             <h2 className="text-2xl font-bold text-foreground mb-4">Recommendations</h2>
             <ul className="space-y-2 text-muted-foreground">
               <li>
-                • <strong className="text-foreground">Llama 3.3 70B</strong> - Best general-purpose choice
+                • <strong className="text-foreground">Hermes 3 405B</strong> - Best for complex logic and instructions
               </li>
               <li>
-                • <strong className="text-foreground">Gemini 2.0 Flash</strong> - Fastest responses, handles long
-                context
+                • <strong className="text-foreground">Trinity Large</strong> - Excellent high-performance reasoning
               </li>
               <li>
-                • <strong className="text-foreground">Mistral Small 3.1</strong> - Efficient, quick responses
+                • <strong className="text-foreground">LFM 2.5 Thinking</strong> - Best for step-by-step problem solving
               </li>
               <li>
-                • <strong className="text-foreground">Qwen3 Coder</strong> - Best for code generation tasks
+                • <strong className="text-foreground">Qwen3 Next 80B</strong> - Powerful general-purpose assistant
               </li>
             </ul>
           </div>
