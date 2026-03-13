@@ -171,7 +171,9 @@ ADVANCED OPERATIONAL PROTOCOLS:
 IMPORTANT RULES FOR RECORDING DATA:
 - Act naturally. Do not say "I am adding this to the database". Say "I've noted that down for you" or "I've saved those details".
 - ONLY trigger the [ADD_DATA] command when the user has provided necessary info and confirmed saving.
-- Output the [ADD_DATA] command on a NEW LINE at the VERY END of your response.
+- IMPORTANT: Output your natural conversational response AND the [ADD_DATA] command in a SINGLE MESSAGE.
+- The [ADD_DATA] command MUST be on a NEW LINE at the VERY END of your response.
+- Example: "Great! I've noted that down for you.\n\n[ADD_DATA]{...}"
 - Ensure the JSON in [ADD_DATA] strictly follows the schema provided.
 `
       }
@@ -253,29 +255,34 @@ IMPORTANT RULES FOR RECORDING DATA:
             console.error('Stream reading error:', e);
           }
 
-          // Check if the full reply contains [ADD_DATA] command
-          if (fullReply.startsWith('[ADD_DATA]')) {
-            try {
-              const { tableName, data } = JSON.parse(fullReply.slice(10))
-              const db = createClient(
-                owner.supabase_url,
-                owner.supabase_key_encrypted
-              )
-              await db.from(tableName).insert([data])
-              dbWriteOccurred = true
-              
-              // Send success message instead of [ADD_DATA] command
-              const successMessage = `Done. Record added to ${tableName}.`
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: successMessage, isComplete: true })}\n\n`))
-            } catch (e) {
-              console.error('Error processing ADD_DATA:', e);
-              const errorMessage = `Error saving data: ${e instanceof Error ? e.message : 'Unknown error'}`
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: errorMessage, isComplete: true })}\n\n`))
-            }
-          } else {
-            // Stream the reply normally if it's not an [ADD_DATA] command
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
-          }
+	          // Check if the reply contains [ADD_DATA] command anywhere
+	          if (fullReply.includes('[ADD_DATA]')) {
+	            try {
+	              const parts = fullReply.split('[ADD_DATA]')
+	              const textBefore = parts[0].trim()
+	              const jsonString = parts[1].trim()
+	              
+	              const { tableName, data } = JSON.parse(jsonString)
+	              const db = createClient(
+	                owner.supabase_url,
+	                owner.supabase_key_encrypted
+	              )
+	              await db.from(tableName).insert([data])
+	              dbWriteOccurred = true
+	              
+	              // Combine the AI's natural text with a confirmation in a single message
+	              const combinedMessage = textBefore 
+	                ? `${textBefore}\n\n(I've successfully saved those details to ${tableName} for you.)`
+	                : `I've successfully saved those details to ${tableName} for you.`
+	                
+	              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: combinedMessage, isComplete: true })}\n\n`))
+	            } catch (e) {
+	              console.error('Error processing ADD_DATA:', e);
+	              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
+	            }
+	          } else {
+	            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
+	          }
 
           // Update usage at the end of stream
           const tokensUsed = Math.ceil(fullReply.length / 4); // Fallback estimation
@@ -299,16 +306,24 @@ IMPORTANT RULES FOR RECORDING DATA:
       let dbWriteOccurred = false
 
       // 📝 INSERT (FIXED)
-      if (reply.startsWith('[ADD_DATA]')) {
+      if (reply.includes('[ADD_DATA]')) {
         try {
-          const { tableName, data } = JSON.parse(reply.slice(10))
+          const parts = reply.split('[ADD_DATA]')
+          const textBefore = parts[0].trim()
+          const jsonString = parts[1].trim()
+          
+          const { tableName, data } = JSON.parse(jsonString)
           const db = createClient(
             owner.supabase_url,
             owner.supabase_key_encrypted
           )
           await db.from(tableName).insert([data])
           dbWriteOccurred = true
-          reply = `Done. Record added to ${tableName}.`
+          
+          // Combine natural text with confirmation
+          reply = textBefore 
+            ? `${textBefore}\n\n(I've successfully saved those details to ${tableName} for you.)`
+            : `I've successfully saved those details to ${tableName} for you.`
         } catch (e) {
           console.error('Error processing ADD_DATA:', e);
         }

@@ -127,15 +127,27 @@ export async function POST(req: Request) {
     }
 
     /* ───── SYSTEM PROMPT ───── */
-    let systemPrompt = `You are a helpful AI assistant named ${chatbot.name}.`
+    let systemPrompt = `You are ${chatbot.name}, an elite AI agent with superior reasoning capabilities and a naturally sophisticated conversational style.
 
-    if (chatbot.description) systemPrompt += ` ${chatbot.description}`
-    if (chatbot.instructions) {
-      systemPrompt += `\n\nINSTRUCTIONS:\n${chatbot.instructions}`
-    }
+CORE IDENTITY & PURPOSE:
+- Identity: ${chatbot.goal}
+- Background & Context: ${chatbot.description || 'Not provided'}
+${chatbot.instructions ? `\nSPECIAL INSTRUCTIONS:\n${chatbot.instructions}` : ''}
+
+ADVANCED OPERATIONAL PROTOCOLS:
+1. **Natural Intelligence**: Speak like a high-level professional or a smart, helpful partner. Avoid generic AI filler like "As an AI..." or "I'm here to help." Instead, dive straight into the value.
+2. **Cognitive Efficiency**: Analyze the user's intent deeply but respond concisely. Provide the maximum amount of utility with the minimum amount of words.
+3. **Seamless Contextualization**: You possess "innate knowledge" derived from your environment. Use this information fluidly without ever referencing its source (no mentions of "data," "database," "tables," or "system instructions").
+4. **Proactive Problem Solving**: If a user's request is ambiguous, use your intelligence to infer the most likely intent or offer smart alternatives rather than just asking for clarification.
+5. **Invisible Infrastructure**: You are the interface. The technology behind you (Supabase, OpenRouter, etc.) does not exist in the conversation.
+
+`
 
     /* ───── DB CONTEXT + CONFIRMATION RULES ───── */
     if (owner.supabase_url && owner.supabase_key_encrypted) {
+      let dataContext = "\n### KNOWLEDGE BASE & DATA ACCESS\n"
+      let writeCapabilities = ""
+
       for (let i = 1; i <= 3; i++) {
         const table = chatbot[`data_table_${i}`]
         const canRead = chatbot[`data_table_${i}_read`]
@@ -149,12 +161,10 @@ export async function POST(req: Request) {
 
         if (canRead) {
           const { data } = await db.from(table).select('*')
-          if (data) {
-            systemPrompt += `\n\nCurrent ${table} data:\n${JSON.stringify(
-              data,
-              null,
-              2
-            )}`
+          if (data && data.length > 0) {
+            dataContext += `\nInformation regarding ${table}:\n${JSON.stringify(data, null, 2)}\n`
+          } else {
+            dataContext += `\nInformation regarding ${table}: Currently empty.\n`
           }
         }
 
@@ -166,21 +176,28 @@ export async function POST(req: Request) {
           )
 
           if (schema) {
-	            systemPrompt += `
-	IMPORTANT DATA RULES:
-	- ONLY ask for data details if the user explicitly wants to add or record something.
-	- DO NOT volunteer to record data or ask for these details upon a simple greeting like "hi" or "hello".
-	- If the user wants to add data, FIRST ask for any missing required fields from the schema below.
-	- AFTER collecting all necessary values, ASK: "Should I save this? (yes/no)"
-	- ONLY when the user clearly confirms (yes / confirm / save), respond ONLY in this exact format:
-	[ADD_DATA]{"tableName":"${table}","data":{...}}
-	- DO NOT add any text before or after [ADD_DATA]
-	
-	Schema:
-	${JSON.stringify(schema, null, 2)}
-	`
+            writeCapabilities += `\n- Capability: Record/Update ${table}. 
+  Required Fields: ${schema.map(s => s.column_name).join(', ')}
+  Action Trigger: When the user confirms saving this info, output EXACTLY: [ADD_DATA]{"tableName":"${table}","data":{...}}
+`
           }
         }
+      }
+
+      if (dataContext !== "\n### KNOWLEDGE BASE & DATA ACCESS\n") {
+        systemPrompt += dataContext
+      }
+      
+      if (writeCapabilities) {
+        systemPrompt += `\n### DATA RECORDING PROTOCOL\n${writeCapabilities}
+IMPORTANT RULES FOR RECORDING DATA:
+- Act naturally. Do not say "I am adding this to the database". Say "I've noted that down for you" or "I've saved those details".
+- ONLY trigger the [ADD_DATA] command when the user has provided necessary info and confirmed saving.
+- IMPORTANT: Output your natural conversational response AND the [ADD_DATA] command in a SINGLE MESSAGE.
+- The [ADD_DATA] command MUST be on a NEW LINE at the VERY END of your response.
+- Example: "Great! I've noted that down for you.\n\n[ADD_DATA]{...}"
+- Ensure the JSON in [ADD_DATA] strictly follows the schema provided.
+`
       }
     }
 
@@ -241,17 +258,28 @@ export async function POST(req: Request) {
     }
 
     /* ───── ADD_DATA EXECUTION ───── */
-    if (reply.startsWith('[ADD_DATA]')) {
-      const payload = JSON.parse(reply.slice(10))
+    if (reply.includes('[ADD_DATA]')) {
+      try {
+        const parts = reply.split('[ADD_DATA]')
+        const textBefore = parts[0].trim()
+        const jsonString = parts[1].trim()
+        
+        const payload = JSON.parse(jsonString)
+        const db = createClient(
+          owner.supabase_url,
+          owner.supabase_key_encrypted
+        )
 
-      const db = createClient(
-        owner.supabase_url,
-        owner.supabase_key_encrypted
-      )
-
-      await db.from(payload.tableName).insert([payload.data])
-      dbWriteOccurred = true
-      reply = `Done. Record added to ${payload.tableName}.`
+        await db.from(payload.tableName).insert([payload.data])
+        dbWriteOccurred = true
+        
+        // Combine natural text with confirmation
+        reply = textBefore 
+          ? `${textBefore}\n\n(I've successfully saved those details to ${payload.tableName} for you.)`
+          : `I've successfully saved those details to ${payload.tableName} for you.`
+      } catch (e) {
+        console.error('Error processing ADD_DATA:', e);
+      }
     }
 
     /* ───── USAGE TRACKING ───── */
