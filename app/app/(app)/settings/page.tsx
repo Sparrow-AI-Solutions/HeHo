@@ -186,7 +186,7 @@ export default function SettingsPage() {
                   </Button>
                 )}
               </div>
-               <p className="text-xs text-muted-foreground mt-3">Treat your API key like a password. <Link href="/api-docs" target="_blank" className="text-primary hover:underline">Read the docs</Link> to learn how to use it.</p>
+               <p className="text-xs text-muted-foreground mt-3">Treat your API key like a password. <Link href="/api-docs" target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Read the docs</Link> to learn how to use it.</p>
             </CardContent>
           </Card>
 

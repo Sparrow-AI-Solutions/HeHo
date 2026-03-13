@@ -170,11 +170,14 @@ ADVANCED OPERATIONAL PROTOCOLS:
         systemPrompt += `\n### DATA RECORDING PROTOCOL\n${writeCapabilities}
 IMPORTANT RULES FOR RECORDING DATA:
 - Act naturally. Do not say "I am adding this to the database". Say "I've noted that down for you" or "I've saved those details".
-- ONLY trigger the [ADD_DATA] command when the user has provided necessary info and confirmed saving.
+- INTELLIGENT DATA COLLECTION: Before saving, ensure you have ALL required fields. If any are missing, ask the user for clarification.
+- ONLY trigger the [ADD_DATA] command when the user has explicitly confirmed saving AND you have all required fields.
 - IMPORTANT: Output your natural conversational response AND the [ADD_DATA] command in a SINGLE MESSAGE.
 - The [ADD_DATA] command MUST be on a NEW LINE at the VERY END of your response.
-- Example: "Great! I've noted that down for you.\n\n[ADD_DATA]{...}"
+- Example: "Great! I've noted that down for you.\n\n[ADD_DATA]{\"tableName\":\"table_name\",\"data\":{...}}"
 - Ensure the JSON in [ADD_DATA] strictly follows the schema provided.
+- VALIDATION: Double-check all field values are valid and non-empty before triggering [ADD_DATA].
+- If the user provides partial information, ask clarifying questions to complete the data set.
 `
       }
     }
@@ -255,34 +258,54 @@ IMPORTANT RULES FOR RECORDING DATA:
             console.error('Stream reading error:', e);
           }
 
-	          // Check if the reply contains [ADD_DATA] command anywhere
-	          if (fullReply.includes('[ADD_DATA]')) {
-	            try {
-	              const parts = fullReply.split('[ADD_DATA]')
-	              const textBefore = parts[0].trim()
-	              const jsonString = parts[1].trim()
-	              
-	              const { tableName, data } = JSON.parse(jsonString)
-	              const db = createClient(
-	                owner.supabase_url,
-	                owner.supabase_key_encrypted
-	              )
-	              await db.from(tableName).insert([data])
-	              dbWriteOccurred = true
-	              
-	              // Combine the AI's natural text with a confirmation in a single message
-	              const combinedMessage = textBefore 
-	                ? `${textBefore}\n\n(I've successfully saved those details to ${tableName} for you.)`
-	                : `I've successfully saved those details to ${tableName} for you.`
-	                
-	              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: combinedMessage, isComplete: true })}\n\n`))
-	            } catch (e) {
-	              console.error('Error processing ADD_DATA:', e);
-	              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
-	            }
-	          } else {
-	            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
-	          }
+          // Check if the reply contains [ADD_DATA] command - Robust detection
+          if (fullReply.includes('[ADD_DATA]')) {
+            try {
+              const addDataMatch = fullReply.match(/\[ADD_DATA\]\s*({[^}]*})/)
+              if (addDataMatch) {
+                const jsonString = addDataMatch[1].trim()
+                const textBefore = fullReply.substring(0, addDataMatch.index).trim()
+                
+                try {
+                  const { tableName, data } = JSON.parse(jsonString)
+                  
+                  // Validate that tableName and data exist
+                  if (!tableName || !data) {
+                    throw new Error('Invalid ADD_DATA format: missing tableName or data')
+                  }
+                  
+                  const db = createClient(
+                    owner.supabase_url,
+                    owner.supabase_key_encrypted
+                  )
+                  await db.from(tableName).insert([data])
+                  dbWriteOccurred = true
+                  
+                  // Combine the AI's natural text with a confirmation in a single message
+                  const combinedMessage = textBefore 
+                    ? `${textBefore}\n\n(I've successfully saved those details to ${tableName} for you.)`
+                    : `I've successfully saved those details to ${tableName} for you.`
+                  
+                  console.log(`✅ Data successfully added to ${tableName} (streaming)`);
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: combinedMessage, isComplete: true })}\n\n`))
+                } catch (parseError) {
+                  console.error('Error parsing ADD_DATA JSON:', parseError);
+                  // If JSON parsing fails, return the original reply without the command
+                  const cleanedReply = fullReply.replace(/\[ADD_DATA\]\s*({[^}]*})/, '').trim()
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: cleanedReply, isComplete: true })}\n\n`))
+                }
+              } else {
+                // ADD_DATA marker found but JSON not properly formatted
+                const cleanedReply = fullReply.replace(/\[ADD_DATA\][^}]*}?/, '').trim()
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: cleanedReply, isComplete: true })}\n\n`))
+              }
+            } catch (e) {
+              console.error('Error processing ADD_DATA:', e);
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
+            }
+          } else {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
+          }
 
           // Update usage at the end of stream
           const tokensUsed = Math.ceil(fullReply.length / 4); // Fallback estimation
@@ -305,25 +328,42 @@ IMPORTANT RULES FOR RECORDING DATA:
       const tokensUsed = responseData.usage?.total_tokens || 0
       let dbWriteOccurred = false
 
-      // 📝 INSERT (FIXED)
+      // 📝 INSERT (FIXED) - Robust ADD_DATA command detection
       if (reply.includes('[ADD_DATA]')) {
         try {
-          const parts = reply.split('[ADD_DATA]')
-          const textBefore = parts[0].trim()
-          const jsonString = parts[1].trim()
-          
-          const { tableName, data } = JSON.parse(jsonString)
-          const db = createClient(
-            owner.supabase_url,
-            owner.supabase_key_encrypted
-          )
-          await db.from(tableName).insert([data])
-          dbWriteOccurred = true
-          
-          // Combine natural text with confirmation
-          reply = textBefore 
-            ? `${textBefore}\n\n(I've successfully saved those details to ${tableName} for you.)`
-            : `I've successfully saved those details to ${tableName} for you.`
+          // Extract the ADD_DATA command and its JSON payload
+          const addDataMatch = reply.match(/\[ADD_DATA\]\s*({[^}]*})/)
+          if (addDataMatch) {
+            const jsonString = addDataMatch[1].trim()
+            const textBefore = reply.substring(0, addDataMatch.index).trim()
+            
+            try {
+              const { tableName, data } = JSON.parse(jsonString)
+              
+              // Validate that tableName and data exist
+              if (!tableName || !data) {
+                throw new Error('Invalid ADD_DATA format: missing tableName or data')
+              }
+              
+              const db = createClient(
+                owner.supabase_url,
+                owner.supabase_key_encrypted
+              )
+              await db.from(tableName).insert([data])
+              dbWriteOccurred = true
+              
+              // Combine natural text with confirmation
+              reply = textBefore 
+                ? `${textBefore}\n\n(I've successfully saved those details to ${tableName} for you.)`
+                : `I've successfully saved those details to ${tableName} for you.`
+              
+              console.log(`✅ Data successfully added to ${tableName}`);
+            } catch (parseError) {
+              console.error('Error parsing ADD_DATA JSON:', parseError);
+              // If JSON parsing fails, just return the original reply without the command
+              reply = reply.replace(/\[ADD_DATA\]\s*({[^}]*})/, '').trim()
+            }
+          }
         } catch (e) {
           console.error('Error processing ADD_DATA:', e);
         }
