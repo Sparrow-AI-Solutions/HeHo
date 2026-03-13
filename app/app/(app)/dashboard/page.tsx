@@ -26,7 +26,7 @@ interface Usage {
 }
 
 const TOKEN_LIMIT_PER_DAY = 250000
-const MESSAGE_LIMIT_PER_DAY = 100
+const MESSAGE_LIMIT_PER_DAY = 1000
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
@@ -130,7 +130,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 py-8">
-         <div class="mb-4 sm:mb-0">
+         <div className="mb-4 sm:mb-0">
             <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">Manage your AI chatbots</p>
           </div>
@@ -139,7 +139,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">Your Plan</h2>
             <p className="text-sm text-muted-foreground">
-              Free tier - 50 chatbots, 100 messages/day, 250K tokens/day
+              Free tier - 50 chatbots, 1000 messages/day, 250K tokens/day
             </p>
           </div>
           <Badge className="bg-black text-white border border-white/20">Free Plan</Badge>

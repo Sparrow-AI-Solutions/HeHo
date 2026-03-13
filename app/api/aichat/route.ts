@@ -13,6 +13,8 @@ const POPULAR_MODELS = [
   "openrouter/hunter-alpha",
 ]
 
+const MAX_DAILY_MESSAGES = 1000
+
 /* ───────────────── CORS ───────────────── */
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,6 +121,15 @@ export async function POST(req: Request) {
     }
 
     const owner = chatbot.users
+
+    const withinLimit = await checkDailyMessageLimit(supabaseAdmin, userId)
+    if (!withinLimit) {
+      return NextResponse.json(
+        { reply: 'your daily limit reached' },
+        { headers: corsHeaders }
+      )
+    }
+
     if (!owner?.openrouter_key_encrypted) {
       return NextResponse.json(
         { error: 'OpenRouter key missing' },
@@ -288,30 +299,9 @@ IMPORTANT RULES FOR EDITING DATA:
       )
     }
 
-    /* ───── ADD_DATA EXECUTION ───── */
-    if (reply.includes('[ADD_DATA]')) {
-      try {
-        const parts = reply.split('[ADD_DATA]')
-        const textBefore = parts[0].trim()
-        const jsonString = parts[1].trim()
-        
-        const payload = JSON.parse(jsonString)
-        const db = createClient(
-          owner.supabase_url,
-          owner.supabase_key_encrypted
-        )
-
-        await db.from(payload.tableName).insert([payload.data])
-        dbWriteOccurred = true
-        
-        // Combine natural text with confirmation
-        reply = textBefore 
-          ? `${textBefore}\n\n(I've successfully saved those details to ${payload.tableName} for you.)`
-          : `I've successfully saved those details to ${payload.tableName} for you.`
-      } catch (e) {
-        console.error('Error processing ADD_DATA:', e);
-      }
-    }
+    const commandResult = await processDataCommands(reply, owner)
+    reply = commandResult.reply
+    dbWriteOccurred = commandResult.dbWriteOccurred
 
     if (reply.includes('[EDIT_DATA]')) {
       try {
@@ -379,4 +369,73 @@ IMPORTANT RULES FOR EDITING DATA:
       { status: 500, headers: corsHeaders }
     )
   }
+}
+
+
+
+
+async function processDataCommands(reply: string, owner: any) {
+  const commandRegex = /\[(ADD_DATA|EDIT_DATA)\]\s*({[\s\S]*?})(?=\s*\[(?:ADD_DATA|EDIT_DATA)\]|\s*$)/g
+  const db = createClient(owner.supabase_url, owner.supabase_key_encrypted)
+  const confirmations: string[] = []
+  let dbWriteOccurred = false
+
+  let match: RegExpExecArray | null
+  while ((match = commandRegex.exec(reply)) !== null) {
+    const commandType = match[1]
+    const payloadRaw = match[2]
+
+    try {
+      const payload = JSON.parse(payloadRaw)
+
+      if (commandType === 'ADD_DATA') {
+        if (!payload.tableName || !payload.data) {
+          throw new Error('Invalid ADD_DATA format')
+        }
+
+        await db.from(payload.tableName).insert([payload.data])
+        dbWriteOccurred = true
+        confirmations.push(`(I've successfully saved those details to ${payload.tableName} for you.)`)
+      }
+
+      if (commandType === 'EDIT_DATA') {
+        if (!payload.tableName || payload.id === undefined || !payload.data) {
+          throw new Error('Invalid EDIT_DATA format')
+        }
+
+        await db.from(payload.tableName).update(payload.data).eq('id', payload.id)
+        dbWriteOccurred = true
+        confirmations.push(`(I've successfully updated that entry in ${payload.tableName} for you.)`)
+      }
+    } catch (error) {
+      console.error(`Error processing ${commandType}:`, error)
+    }
+  }
+
+  const cleanedReply = reply.replace(commandRegex, '').trim()
+  const confirmationText = confirmations.join('\n')
+
+  if (cleanedReply && confirmationText) {
+    return { reply: `${cleanedReply}\n\n${confirmationText}`, dbWriteOccurred }
+  }
+
+  if (!cleanedReply && confirmationText) {
+    return { reply: confirmationText, dbWriteOccurred }
+  }
+
+  return { reply: cleanedReply, dbWriteOccurred }
+}
+
+async function checkDailyMessageLimit(supabaseAdmin: any, userId: string) {
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data: existing } = await supabaseAdmin
+    .from('usage')
+    .select('messages')
+    .eq('user_id', userId)
+    .eq('month', today)
+    .maybeSingle()
+
+  const messagesToday = Number(existing?.messages) || 0
+  return messagesToday < MAX_DAILY_MESSAGES
 }

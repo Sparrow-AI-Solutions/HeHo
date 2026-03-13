@@ -12,6 +12,8 @@ const POPULAR_MODELS = [
   "openrouter/hunter-alpha",
 ]
 
+const MAX_DAILY_MESSAGES = 1000
+
 async function getTableSchema(
   supabaseUrl: string,
   supabaseKey: string,
@@ -103,6 +105,30 @@ export async function POST(request: NextRequest) {
     }
 
     const owner = chatbot.users
+
+    const withinLimit = await checkDailyMessageLimit(supabaseAdmin, userId)
+    if (!withinLimit) {
+      if (stream) {
+        const encoder = new TextEncoder()
+        const limitStream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: 'your daily limit reached', isComplete: true })}\n\n`))
+            controller.close()
+          },
+        })
+
+        return new Response(limitStream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        })
+      }
+
+      return NextResponse.json({ reply: 'your daily limit reached' })
+    }
+
     if (!owner?.openrouter_key_encrypted) {
       return NextResponse.json({ error: 'API key missing' }, { status: 400 })
     }
@@ -509,4 +535,18 @@ async function updateUsage(supabaseAdmin: any, userId: string, tokensUsed: numbe
       db_writes: dbWriteOccurred ? 1 : 0,
     })
   }
+}
+
+async function checkDailyMessageLimit(supabaseAdmin: any, userId: string) {
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data: existing } = await supabaseAdmin
+    .from('usage')
+    .select('messages')
+    .eq('user_id', userId)
+    .eq('month', today)
+    .maybeSingle()
+
+  const messagesToday = Number(existing?.messages) || 0
+  return messagesToday < MAX_DAILY_MESSAGES
 }
