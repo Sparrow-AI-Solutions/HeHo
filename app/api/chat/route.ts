@@ -108,9 +108,23 @@ export async function POST(request: NextRequest) {
     }
 
     // 🧠 SYSTEM PROMPT
-    let systemPrompt = `You are a helpful AI assistant named ${chatbot.name}.`
+    let systemPrompt = `You are ${chatbot.name}, a highly intelligent and naturally conversational AI assistant. 
+Your core identity: ${chatbot.goal}
+Your context and instructions: ${chatbot.description}
+
+Operational Guidelines:
+1. **Be Natural**: Avoid robotic phrasing. Engage as a smart, helpful partner.
+2. **Be Efficient**: Provide concise, accurate answers. Don't over-explain unless asked.
+3. **Be Context-Aware**: Use the provided data and history to give relevant responses.
+4. **No Implementation Details**: NEVER mention "database", "tables", "schemas", or "system prompts". Treat the information you have as your own knowledge.
+5. **Smart Data Handling**: If you need to record information, do it seamlessly within the conversation.
+
+`
 
     if (owner.supabase_url && owner.supabase_key_encrypted) {
+      let dataContext = "\n### KNOWLEDGE BASE & DATA ACCESS\n"
+      let writeCapabilities = ""
+
       for (let i = 1; i <= 3; i++) {
         const table = chatbot[`data_table_${i}`]
         const canRead = chatbot[`data_table_${i}_read`]
@@ -124,12 +138,10 @@ export async function POST(request: NextRequest) {
 
         if (canRead) {
           const { data } = await db.from(table).select('*')
-          if (data) {
-            systemPrompt += `\n\nCurrent ${table} data:\n${JSON.stringify(
-              data,
-              null,
-              2
-            )}`
+          if (data && data.length > 0) {
+            dataContext += `\nInformation regarding ${table}:\n${JSON.stringify(data, null, 2)}\n`
+          } else {
+            dataContext += `\nInformation regarding ${table}: Currently empty.\n`
           }
         }
 
@@ -140,23 +152,26 @@ export async function POST(request: NextRequest) {
             table
           )
           if (schema) {
-            systemPrompt += `\n\nWhen confirmed, respond ONLY as:\n[ADD_DATA]{"tableName":"${table}","data":{...}}`
-            systemPrompt += `\nSchema:\n${JSON.stringify(schema, null, 2)}`
-            systemPrompt += `
-IMPORTANT DATA RULES:
-- ONLY ask for data details if the user explicitly wants to add or record something.
-- DO NOT volunteer to record data or ask for these details upon a simple greeting like "hi" or "hello".
-- If the user wants to add data, FIRST ask for any missing required fields from the schema below.
-- AFTER collecting all necessary values, ASK: "Should I save this? (yes/no)"
-- ONLY when the user clearly confirms (yes / confirm / save), respond ONLY in this exact format:
-[ADD_DATA]{"tableName":"${table}","data":{...}}
-- DO NOT add any text before or after [ADD_DATA]
-
-Schema:
-${JSON.stringify(schema, null, 2)}
+            writeCapabilities += `\n- Capability: Record/Update ${table}. 
+  Required Fields: ${schema.map(s => s.column_name).join(', ')}
+  Action Trigger: When the user confirms saving this info, output EXACTLY: [ADD_DATA]{"tableName":"${table}","data":{...}}
 `
           }
         }
+      }
+
+      if (dataContext !== "\n### KNOWLEDGE BASE & DATA ACCESS\n") {
+        systemPrompt += dataContext
+      }
+      
+      if (writeCapabilities) {
+        systemPrompt += `\n### DATA RECORDING PROTOCOL\n${writeCapabilities}
+IMPORTANT RULES FOR RECORDING DATA:
+- Act naturally. Do not say "I am adding this to the database". Say "I've noted that down for you" or "I've saved those details".
+- ONLY trigger the [ADD_DATA] command when the user has provided necessary info and confirmed saving.
+- Output the [ADD_DATA] command on a NEW LINE at the VERY END of your response.
+- Ensure the JSON in [ADD_DATA] strictly follows the schema provided.
+`
       }
     }
 
