@@ -205,6 +205,7 @@ ${JSON.stringify(schema, null, 2)}
           }
 
           let fullReply = '';
+          let dbWriteOccurred = false;
 
           try {
             while (true) {
@@ -224,7 +225,6 @@ ${JSON.stringify(schema, null, 2)}
                     const content = data.choices[0]?.delta?.content || '';
                     if (content) {
                       fullReply += content;
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
                     }
                   } catch (e) {
                     console.error('Error parsing stream chunk:', e);
@@ -234,12 +234,36 @@ ${JSON.stringify(schema, null, 2)}
             }
           } catch (e) {
             console.error('Stream reading error:', e);
-          } finally {
-            // Update usage at the end of stream (approximated)
-            const tokensUsed = Math.ceil(fullReply.length / 4); // Fallback estimation
-            await updateUsage(supabaseAdmin, userId, tokensUsed, false);
-            controller.close();
           }
+
+          // Check if the full reply contains [ADD_DATA] command
+          if (fullReply.startsWith('[ADD_DATA]')) {
+            try {
+              const { tableName, data } = JSON.parse(fullReply.slice(10))
+              const db = createClient(
+                owner.supabase_url,
+                owner.supabase_key_encrypted
+              )
+              await db.from(tableName).insert([data])
+              dbWriteOccurred = true
+              
+              // Send success message instead of [ADD_DATA] command
+              const successMessage = `Done. Record added to ${tableName}.`
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: successMessage, isComplete: true })}\n\n`))
+            } catch (e) {
+              console.error('Error processing ADD_DATA:', e);
+              const errorMessage = `Error saving data: ${e instanceof Error ? e.message : 'Unknown error'}`
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: errorMessage, isComplete: true })}\n\n`))
+            }
+          } else {
+            // Stream the reply normally if it's not an [ADD_DATA] command
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
+          }
+
+          // Update usage at the end of stream
+          const tokensUsed = Math.ceil(fullReply.length / 4); // Fallback estimation
+          await updateUsage(supabaseAdmin, userId, tokensUsed, dbWriteOccurred);
+          controller.close();
         }
       });
 
