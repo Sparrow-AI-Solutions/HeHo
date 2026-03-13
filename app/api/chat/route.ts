@@ -142,19 +142,19 @@ export async function POST(request: NextRequest) {
           if (schema) {
             systemPrompt += `\n\nWhen confirmed, respond ONLY as:\n[ADD_DATA]{"tableName":"${table}","data":{...}}`
             systemPrompt += `\nSchema:\n${JSON.stringify(schema, null, 2)}`
-            systemPrompt += `
-IMPORTANT DATA RULES:
-- NEVER insert data immediately
-- FIRST ask the user for all required fields
-- AFTER collecting values, ASK: "Should I save this? (yes/no)"
-- ONLY when the user clearly confirms (yes / confirm / save)
-- THEN respond ONLY in this exact format:
-[ADD_DATA]{"tableName":"${table}","data":{...}}
-- DO NOT add any text before or after [ADD_DATA]
-
-Schema:
-${JSON.stringify(schema, null, 2)}
-`
+	            systemPrompt += `
+	IMPORTANT DATA RULES:
+	- ONLY ask for data details if the user explicitly wants to add or record something.
+	- DO NOT volunteer to record data or ask for these details upon a simple greeting like "hi" or "hello".
+	- If the user wants to add data, FIRST ask for any missing required fields from the schema below.
+	- AFTER collecting all necessary values, ASK: "Should I save this? (yes/no)"
+	- ONLY when the user clearly confirms (yes / confirm / save), respond ONLY in this exact format:
+	[ADD_DATA]{"tableName":"${table}","data":{...}}
+	- DO NOT add any text before or after [ADD_DATA]
+	
+	Schema:
+	${JSON.stringify(schema, null, 2)}
+	`
           }
         }
       }
