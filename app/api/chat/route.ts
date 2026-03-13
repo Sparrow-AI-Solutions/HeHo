@@ -40,7 +40,7 @@ async function getTableSchema(
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, isPublic, chatbotId } = await request.json()
+    const { message, history, isPublic, chatbotId, stream = false } = await request.json()
     if (!message || !chatbotId) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
@@ -142,109 +142,175 @@ export async function POST(request: NextRequest) {
           if (schema) {
             systemPrompt += `\n\nWhen confirmed, respond ONLY as:\n[ADD_DATA]{"tableName":"${table}","data":{...}}`
             systemPrompt += `\nSchema:\n${JSON.stringify(schema, null, 2)}`
-	            systemPrompt += `
-	IMPORTANT DATA RULES:
-	- ONLY ask for data details if the user explicitly wants to add or record something.
-	- DO NOT volunteer to record data or ask for these details upon a simple greeting like "hi" or "hello".
-	- If the user wants to add data, FIRST ask for any missing required fields from the schema below.
-	- AFTER collecting all necessary values, ASK: "Should I save this? (yes/no)"
-	- ONLY when the user clearly confirms (yes / confirm / save), respond ONLY in this exact format:
-	[ADD_DATA]{"tableName":"${table}","data":{...}}
-	- DO NOT add any text before or after [ADD_DATA]
-	
-	Schema:
-	${JSON.stringify(schema, null, 2)}
-	`
+            systemPrompt += `
+IMPORTANT DATA RULES:
+- ONLY ask for data details if the user explicitly wants to add or record something.
+- DO NOT volunteer to record data or ask for these details upon a simple greeting like "hi" or "hello".
+- If the user wants to add data, FIRST ask for any missing required fields from the schema below.
+- AFTER collecting all necessary values, ASK: "Should I save this? (yes/no)"
+- ONLY when the user clearly confirms (yes / confirm / save), respond ONLY in this exact format:
+[ADD_DATA]{"tableName":"${table}","data":{...}}
+- DO NOT add any text before or after [ADD_DATA]
+
+Schema:
+${JSON.stringify(schema, null, 2)}
+`
           }
         }
       }
     }
 
     // 🤖 AI CALL
-    let responseData: any = null
-    for (const model of [chatbot.model, ...POPULAR_MODELS]) {
-      const res = await fetch(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${owner.openrouter_key_encrypted}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...(history || []),
-              { role: 'user', content: message },
-            ],
-          }),
-        }
-      )
+    const openRouterPayload = {
+      model: chatbot.model || POPULAR_MODELS[0],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...(history || []),
+        { role: 'user', content: message },
+      ],
+      stream: stream,
+    };
 
-      if (res.ok) {
-        responseData = await res.json()
-        break
+    const openRouterRes = await fetch(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${owner.openrouter_key_encrypted}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://heho.vercel.app',
+          'X-Title': 'HeHo Chatbot',
+        },
+        body: JSON.stringify(openRouterPayload),
       }
-    }
+    )
 
-    if (!responseData) {
+    if (!openRouterRes.ok) {
+      const errorText = await openRouterRes.text();
+      console.error('OpenRouter error:', errorText);
       return NextResponse.json({ error: 'AI failed' }, { status: 500 })
     }
 
-    let reply = responseData.choices[0].message.content
-    const tokensUsed = responseData.usage?.total_tokens || 0
-    let dbWriteOccurred = false
+    if (stream) {
+      // Handle streaming response
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
 
-    // 📝 INSERT (FIXED)
-    if (reply.startsWith('[ADD_DATA]')) {
-      const { tableName, data } = JSON.parse(reply.slice(10))
+      const customStream = new ReadableStream({
+        async start(controller) {
+          const reader = openRouterRes.body?.getReader();
+          if (!reader) {
+            controller.close();
+            return;
+          }
 
-      const db = createClient(
-        owner.supabase_url,
-        owner.supabase_key_encrypted
-      )
+          let fullReply = '';
 
-      await db.from(tableName).insert([data])
-      dbWriteOccurred = true
-      reply = `Done. Record added to ${tableName}.`
-    }
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
 
-    // 📊 USAGE (UNCHANGED)
-    const month = new Date().toISOString().split('T')[0]
-    const { data: existing } = await supabaseAdmin
-      .from('usage')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('month', month)
-      .maybeSingle()
+              const chunk = decoder.decode(value);
+              const lines = chunk.split('\n').filter(line => line.trim() !== '');
 
-    if (existing) {
-      await supabaseAdmin
-        .from('usage')
-        .update({
-          messages: existing.messages + 1,
-          tokens: existing.tokens + tokensUsed,
-          api_calls: existing.api_calls + 1,
-          db_writes: dbWriteOccurred
-            ? (existing.db_writes || 0) + 1
-            : existing.db_writes,
-        })
-        .eq('id', existing.id)
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const dataStr = line.slice(6);
+                  if (dataStr === '[DONE]') continue;
+
+                  try {
+                    const data = JSON.parse(dataStr);
+                    const content = data.choices[0]?.delta?.content || '';
+                    if (content) {
+                      fullReply += content;
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                    }
+                  } catch (e) {
+                    console.error('Error parsing stream chunk:', e);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Stream reading error:', e);
+          } finally {
+            // Update usage at the end of stream (approximated)
+            const tokensUsed = Math.ceil(fullReply.length / 4); // Fallback estimation
+            await updateUsage(supabaseAdmin, userId, tokensUsed, false);
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(customStream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
     } else {
-      await supabaseAdmin.from('usage').insert({
-        user_id: userId,
-        month,
-        messages: 1,
-        tokens: tokensUsed,
-        api_calls: 1,
-        db_writes: dbWriteOccurred ? 1 : 0,
-      })
-    }
+      // Handle non-streaming response
+      const responseData = await openRouterRes.json();
+      let reply = responseData.choices[0].message.content
+      const tokensUsed = responseData.usage?.total_tokens || 0
+      let dbWriteOccurred = false
 
-    return NextResponse.json({ reply })
+      // 📝 INSERT (FIXED)
+      if (reply.startsWith('[ADD_DATA]')) {
+        try {
+          const { tableName, data } = JSON.parse(reply.slice(10))
+          const db = createClient(
+            owner.supabase_url,
+            owner.supabase_key_encrypted
+          )
+          await db.from(tableName).insert([data])
+          dbWriteOccurred = true
+          reply = `Done. Record added to ${tableName}.`
+        } catch (e) {
+          console.error('Error processing ADD_DATA:', e);
+        }
+      }
+
+      await updateUsage(supabaseAdmin, userId, tokensUsed, dbWriteOccurred);
+      return NextResponse.json({ reply, tokens: tokensUsed })
+    }
   } catch (e: any) {
     console.error(e)
     return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+
+async function updateUsage(supabaseAdmin: any, userId: string, tokensUsed: number, dbWriteOccurred: boolean) {
+  const month = new Date().toISOString().split('T')[0]
+  const { data: existing } = await supabaseAdmin
+    .from('usage')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('month', month)
+    .maybeSingle()
+
+  if (existing) {
+    await supabaseAdmin
+      .from('usage')
+      .update({
+        messages: existing.messages + 1,
+        tokens: existing.tokens + tokensUsed,
+        api_calls: existing.api_calls + 1,
+        db_writes: dbWriteOccurred
+          ? (existing.db_writes || 0) + 1
+          : existing.db_writes,
+      })
+      .eq('id', existing.id)
+  } else {
+    await supabaseAdmin.from('usage').insert({
+      user_id: userId,
+      month,
+      messages: 1,
+      tokens: tokensUsed,
+      api_calls: 1,
+      db_writes: dbWriteOccurred ? 1 : 0,
+    })
   }
 }

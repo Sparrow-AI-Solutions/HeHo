@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
-import { Loader2, AlertCircle, ArrowLeft, Database, Copy, Check, Share2, Globe, Clock, RefreshCw } from "lucide-react"
+import { Loader2, AlertCircle, ArrowLeft, Database, Copy, Check, Share2, Globe, User, Bot } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -277,23 +277,23 @@ function ChatbotSettingsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-12 max-w-3xl">
+      <div className="container mx-auto px-4 py-8 sm:py-12 max-w-3xl">
         <Link href={`/app/chatbots/${chatbotId}`} className="text-primary hover:underline mb-8 flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Chat
         </Link>
 
-        <h1 className="text-4xl font-bold text-foreground mb-8">Chatbot Settings</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-8">Chatbot Settings</h1>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-card/50 border border-border/50">
-            <TabsTrigger value="config">Configuration</TabsTrigger>
-            <TabsTrigger value="theme">Theme</TabsTrigger>
-            <TabsTrigger value="deploy">Deploy</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 bg-card/50 border border-border/50 rounded-xl">
+            <TabsTrigger value="config" className="rounded-lg">Configuration</TabsTrigger>
+            <TabsTrigger value="theme" className="rounded-lg">Theme</TabsTrigger>
+            <TabsTrigger value="deploy" className="rounded-lg">Deploy</TabsTrigger>
           </TabsList>
 
           <TabsContent value="config">
-            <Card className="border-border/50 bg-card/50">
+            <Card className="border-border/50 bg-card/50 shadow-xl rounded-2xl overflow-hidden">
               <CardHeader>
                 <CardTitle>Edit Chatbot</CardTitle>
                 <CardDescription>Update your chatbot configuration</CardDescription>
@@ -304,7 +304,7 @@ function ChatbotSettingsPage() {
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="bg-background/50 border-border/50"
+                    className="bg-background/50 border-border/50 rounded-xl"
                   />
                 </div>
 
@@ -313,7 +313,7 @@ function ChatbotSettingsPage() {
                   <Input
                     value={formData.goal}
                     onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-                    className="bg-background/50 border-border/50"
+                    className="bg-background/50 border-border/50 rounded-xl"
                   />
                 </div>
 
@@ -322,7 +322,7 @@ function ChatbotSettingsPage() {
                   <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="bg-background/50 border-border/50 min-h-32"
+                    className="bg-background/50 border-border/50 min-h-32 rounded-xl"
                   />
                 </div>
 
@@ -337,7 +337,7 @@ function ChatbotSettingsPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Tone</label>
                   <Select value={formData.tone} onValueChange={(value) => setFormData({ ...formData, tone: value })}>
-                    <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectTrigger className="bg-background/50 border-border/50 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -353,7 +353,7 @@ function ChatbotSettingsPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">AI Model</label>
                   <Select value={formData.model} onValueChange={(value) => setFormData({ ...formData, model: value })}>
-                    <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectTrigger className="bg-background/50 border-border/50 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -367,14 +367,14 @@ function ChatbotSettingsPage() {
                 </div>
 
                 {error && (
-                  <Alert className="border-destructive/50 bg-destructive/5">
+                  <Alert className="border-destructive/50 bg-destructive/5 rounded-xl">
                     <AlertCircle className="h-4 w-4 text-destructive" />
                     <AlertDescription className="text-destructive">{error}</AlertDescription>
                   </Alert>
                 )}
 
                 {success && (
-                  <Alert className="border-primary/50 bg-primary/5">
+                  <Alert className="border-primary/50 bg-primary/5 rounded-xl">
                     <AlertCircle className="h-4 w-4 text-primary" />
                     <AlertDescription className="text-primary">{success}</AlertDescription>
                   </Alert>
@@ -383,8 +383,7 @@ function ChatbotSettingsPage() {
                 <Button
                   onClick={handleSave}
                   disabled={saving}
-                  className="w-full bg-primary hover:bg-primary/90"
-                  size="lg"
+                  className="w-full bg-primary hover:bg-primary/90 rounded-xl h-12 text-lg font-semibold"
                 >
                   {saving ? (
                     <>
@@ -400,22 +399,22 @@ function ChatbotSettingsPage() {
           </TabsContent>
 
           <TabsContent value="theme">
-            <Card className="border-border/50 bg-card/50">
+            <Card className="border-border/50 bg-card/50 shadow-xl rounded-2xl overflow-hidden">
               <CardHeader>
                 <CardTitle>Chatbot Theme</CardTitle>
                 <CardDescription>Customize the appearance of your chatbot</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-8">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-4">Select Theme</label>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
                     {THEMES.map((t) => (
                       <button
                         key={t.value}
                         type="button"
                         onClick={() => setFormData({ ...formData, theme: t.value })}
-                        className={`aspect-square rounded-lg border-2 transition-all transform hover:scale-105 ${
-                          formData.theme === t.value ? "border-white ring-2 ring-white" : "border-border/50"
+                        className={`aspect-square rounded-xl border-2 transition-all transform hover:scale-110 ${
+                          formData.theme === t.value ? "border-primary ring-4 ring-primary/20 scale-110" : "border-border/50"
                         } ${t.color}`}
                         title={t.label}
                       >
@@ -423,23 +422,38 @@ function ChatbotSettingsPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-4">
-                    Selected: {THEMES.find((t) => t.value === formData.theme)?.label}
+                  <p className="text-sm text-muted-foreground mt-4 font-medium">
+                    Active Theme: <span className="text-foreground">{THEMES.find((t) => t.value === formData.theme)?.label}</span>
                   </p>
                 </div>
 
-                <div className="bg-background/50 border border-border/50 rounded-lg p-6">
-                  <h3 className="font-semibold text-foreground mb-3">Preview</h3>
-                  <div className="space-y-3">
-                    <div className="flex gap-3 justify-end">
-                      <div
-                        className={`max-w-xs px-4 py-3 rounded-lg rounded-br-none border border-white/20 ${selectedTheme.color} ${selectedTheme.textColor}`}>
-                        <p className="text-sm">This is a user message</p>
+                <div className="bg-background/80 border border-border/50 rounded-2xl p-4 sm:p-6 shadow-inner">
+                  <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-primary" />
+                    Live Preview
+                  </h3>
+                  <div className="space-y-6">
+                    <div className="flex gap-3 justify-end items-start">
+                      <div className="flex flex-col items-end gap-1 max-w-[85%]">
+                        <div className={`px-4 py-3 rounded-2xl rounded-tr-none shadow-md ${selectedTheme.color} ${selectedTheme.textColor}`}>
+                          <p className="text-sm sm:text-base font-medium">This is a user message</p>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase">You</span>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                        <User className="h-4 w-4 text-gray-500" />
                       </div>
                     </div>
-                    <div className="flex gap-3 justify-start">
-                      <div className="max-w-xs bg-card/50 border border-border/50 text-foreground rounded-lg rounded-bl-none px-4 py-3">
-                        <p className="text-sm">This is a bot response</p>
+                    
+                    <div className="flex gap-3 justify-start items-start">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${selectedTheme.color}`}>
+                        <Bot className={`h-4 w-4 ${selectedTheme.textColor}`} />
+                      </div>
+                      <div className="flex flex-col items-start gap-1 max-w-[85%]">
+                        <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 text-foreground rounded-2xl rounded-tl-none px-4 py-3 shadow-md">
+                          <p className="text-sm sm:text-base">This is a bot response. Notice how professional it looks!</p>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase">{formData.name || 'Bot'}</span>
                       </div>
                     </div>
                   </div>
@@ -448,8 +462,7 @@ function ChatbotSettingsPage() {
                 <Button
                   onClick={handleSave}
                   disabled={saving}
-                  className="w-full bg-primary hover:bg-primary/90"
-                  size="lg"
+                  className="w-full bg-primary hover:bg-primary/90 rounded-xl h-12 text-lg font-semibold"
                 >
                   {saving ? (
                     <>
@@ -466,14 +479,14 @@ function ChatbotSettingsPage() {
 
           <TabsContent value="deploy">
              {!share ? (
-          <Card className='border-border/50 bg-card/50 mb-8'>
+          <Card className='border-border/50 bg-card/50 mb-8 rounded-2xl shadow-xl overflow-hidden'>
             <CardHeader>
               <CardTitle>Deploy Your Chatbot</CardTitle>
               <CardDescription>Make your chatbot publicly accessible.</CardDescription>
             </CardHeader>
             <CardContent className='space-y-6'>
-              <Alert>
-                <Globe className='h-4 w-4' />
+              <Alert className="rounded-xl border-primary/20 bg-primary/5">
+                <Globe className='h-4 w-4 text-primary' />
                 <AlertDescription className='text-foreground'>
                   Deploying will generate a public link. Anyone with this link can interact with your chatbot.
                 </AlertDescription>
@@ -488,7 +501,7 @@ function ChatbotSettingsPage() {
               <Button
                 onClick={handleDeploy}
                 disabled={deploying || (expires && !expiryDate)}
-                className='w-full bg-black hover:bg-gray-900 text-white border border-white/20'
+                className='w-full bg-black dark:bg-white dark:text-black hover:opacity-90 text-white rounded-xl h-12 font-bold transition-all'
               >
                 {deploying ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Globe className='mr-2 h-4 w-4' />}
                 Deploy Chatbot
@@ -498,40 +511,43 @@ function ChatbotSettingsPage() {
         ) : (
           <>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6 mb-8'>
-              <Card className='border-green-600/50 bg-green-600/10'>
+              <Card className='border-border/50 bg-card/50 rounded-2xl shadow-xl'>
                 <CardHeader>
-                  <CardTitle className='text-green-400'>Deployment Status</CardTitle>
-                  {share.expires_at && <p className='text-sm text-green-300 pt-2'>{countdown}</p>}
+                  <CardTitle className='text-green-500 flex items-center gap-2'>
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    Deployment Status
+                  </CardTitle>
+                  {share.expires_at && <p className='text-sm text-green-600/80 pt-2 font-medium'>{countdown}</p>}
                 </CardHeader>
                 <CardContent>
-                  <Badge className='bg-green-600 text-white mb-4'>Active</Badge>
-                  <p className='text-sm text-muted-foreground mb-4'>
+                  <Badge className='bg-green-500 text-white mb-4 px-3 py-1 rounded-full'>Active</Badge>
+                  <p className='text-sm text-muted-foreground mb-6'>
                     Your chatbot is live. Anyone with the link can access it.
                   </p>
                   <Button
                     variant='outline'
                     onClick={handleUndeploy}
                     disabled={deploying}
-                    className='w-full border-destructive/50 text-destructive hover:bg-destructive/10 bg-transparent'
+                    className='w-full border-destructive/50 text-destructive hover:bg-destructive/10 bg-transparent rounded-xl'
                   >
                     {deploying ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : 'Undeploy Chatbot'}
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card className='border-border/50 bg-card/50'>
+              <Card className='border-border/50 bg-card/50 rounded-2xl shadow-xl'>
                 <CardHeader>
                   <CardTitle>Public URL</CardTitle>
                 </CardHeader>
-                <CardContent className='space-y-3'>
+                <CardContent className='space-y-4'>
                   <div className='flex gap-2'>
-                    <Input value={deployUrl} readOnly className='bg-background/50 border-border/50 text-foreground text-sm' />
-                    <Button onClick={() => copyToClipboard(deployUrl, 'url')} className='bg-white hover:bg-gray-200 text-black px-3'>
+                    <Input value={deployUrl} readOnly className='bg-background/50 border-border/50 text-foreground text-sm rounded-xl' />
+                    <Button onClick={() => copyToClipboard(deployUrl, 'url')} className='bg-primary hover:bg-primary/90 text-white px-3 rounded-xl shrink-0'>
                       {copied === 'url' ? <Check className='h-4 w-4' /> : <Copy className='h-4 w-4' />}
                     </Button>
                   </div>
-                  <Link href={deployUrl} target='_blank'>
-                    <Button className='w-full border-border/50 text-foreground hover:bg-white/10 bg-transparent'>
+                  <Link href={deployUrl} target='_blank' className="block w-full">
+                    <Button className='w-full border-border/50 text-foreground hover:bg-foreground/10 bg-transparent rounded-xl'>
                       <Share2 className='mr-2 h-4 w-4' />
                       Open Public Link
                     </Button>
@@ -541,48 +557,46 @@ function ChatbotSettingsPage() {
             </div>
 
             <Tabs defaultValue='embed' className='w-full'>
-               {/* Updated grid-cols-2 to grid-cols-3 to accommodate the new tab */}
-               <TabsList className="grid w-full grid-cols-3 bg-card/50 border border-border/50">
-                <TabsTrigger value="embed">Embed Code</TabsTrigger>
-                <TabsTrigger value="iframe">iframe</TabsTrigger>
-                <TabsTrigger value="api">HeHo API</TabsTrigger> {/* New TabsTrigger */}
+               <TabsList className="grid w-full grid-cols-3 bg-card/50 border border-border/50 rounded-xl">
+                <TabsTrigger value="embed" className="rounded-lg">Embed Code</TabsTrigger>
+                <TabsTrigger value="iframe" className="rounded-lg">iframe</TabsTrigger>
+                <TabsTrigger value="api" className="rounded-lg">HeHo API</TabsTrigger>
               </TabsList>
               <TabsContent value='embed'>
-                <Card className='border-border/50 bg-card/50'>
+                <Card className='border-border/50 bg-card/50 rounded-2xl shadow-xl'>
                   <CardHeader>
                       <CardTitle>Embed Widget</CardTitle>
                       <CardDescription>Add this code to your website to embed the chatbot widget</CardDescription>
                   </CardHeader>
                   <CardContent className='space-y-4'>
-                    <div className='bg-background/50 border border-border/50 rounded-lg p-4 overflow-x-auto'>
+                    <div className='bg-background/80 border border-border/50 rounded-xl p-4 overflow-x-auto shadow-inner'>
                       <pre className='text-xs text-muted-foreground font-mono whitespace-pre-wrap break-words'>{embedCode}</pre>
                     </div>
-                    <Button onClick={() => copyToClipboard(embedCode, 'embed')} className='w-full bg-white hover:bg-gray-200 text-black'>
+                    <Button onClick={() => copyToClipboard(embedCode, 'embed')} className='w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-semibold'>
                       {copied === 'embed' ? <Check className='h-4 w-4 mr-2' /> : <Copy className='h-4 w-4 mr-2' />}Copy Embed Code
                     </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
               <TabsContent value='iframe'>
-                <Card className='border-border/50 bg-card/50'>
+                <Card className='border-border/50 bg-card/50 rounded-2xl shadow-xl'>
                    <CardHeader>
                     <CardTitle>iframe Embed</CardTitle>
                     <CardDescription>Embed your chatbot using an iframe tag</CardDescription>
                   </CardHeader>
                   <CardContent className='space-y-4'>
-                    <div className='bg-background/50 border border-border/50 rounded-lg p-4 overflow-x-auto'>
+                    <div className='bg-background/80 border border-border/50 rounded-xl p-4 overflow-x-auto shadow-inner'>
                       <pre className='text-xs text-muted-foreground font-mono whitespace-pre-wrap break-words'>{iframeCode}</pre>
                     </div>
-                    <Button onClick={() => copyToClipboard(iframeCode, 'iframe')} className='w-full bg-white hover:bg-gray-200 text-black'>
+                    <Button onClick={() => copyToClipboard(iframeCode, 'iframe')} className='w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-semibold'>
                       {copied === 'iframe' ? <Check className='h-4 w-4 mr-2' /> : <Copy className='h-4 w-4 mr-2' />}Copy iframe Code
                     </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* New TabsContent for HeHo API */}
               <TabsContent value='api'>
-                <Card className='border-border/50 bg-card/50'>
+                <Card className='border-border/50 bg-card/50 rounded-2xl shadow-xl'>
                   <CardHeader>
                     <CardTitle>HeHo API Integration</CardTitle>
                     <CardDescription>Integrate your chatbot with the HeHo API</CardDescription>
@@ -591,14 +605,13 @@ function ChatbotSettingsPage() {
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Chatbot ID</label>
                       <div className='flex gap-2'>
-                        {/* The chatbotId variable is already available in scope from params.id */}
-                        <Input value={chatbotId} readOnly className='bg-background/50 border-border/50 text-foreground text-sm' />
-                        <Button onClick={() => copyToClipboard(chatbotId, 'chatbotId')} className='bg-white hover:bg-gray-200 text-black px-3'>
+                        <Input value={chatbotId} readOnly className='bg-background/50 border-border/50 text-foreground text-sm rounded-xl' />
+                        <Button onClick={() => copyToClipboard(chatbotId, 'chatbotId')} className='bg-primary hover:bg-primary/90 text-white px-3 rounded-xl shrink-0'>
                           {copied === 'chatbotId' ? <Check className='h-4 w-4' /> : <Copy className='h-4 w-4' />}
                         </Button>
                       </div>
                     </div>
-                    <p className='text-sm text-muted-foreground'>
+                    <p className='text-sm text-muted-foreground font-medium'>
                       For more information on integrating with the HeHo API, refer to the <a href="/api-documentation" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">API Documentation Page</a>.
                     </p>
                   </CardContent>
@@ -616,7 +629,7 @@ function ChatbotSettingsPage() {
 
 export default function ChatbotSettingsPageWrapper() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
       <ChatbotSettingsPage />
     </Suspense>
   )

@@ -4,10 +4,10 @@ import type React from 'react'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
 import { useParams } from 'next/navigation'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, User, Bot, Globe } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -24,14 +24,6 @@ interface Chatbot {
   theme: string
   user_id: string
 }
-
-interface Usage {
-  messages: number
-  tokens: number
-}
-
-const MESSAGE_LIMIT = 100
-const TOKEN_LIMIT = 250000
 
 const THEMES = [
   { value: 'twilight', label: 'Twilight', color: 'bg-gradient-to-r from-slate-900 to-slate-700', textColor: 'text-white' },
@@ -51,9 +43,9 @@ export default function SharedChatbotPage() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [usage, setUsage] = useState<Usage>({ messages: 0, tokens: 0 })
-  const [limitReached, setLimitReached] = useState(false)
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const params = useParams()
   const supabase = createClient()
   const shareToken = params.id as string
@@ -98,27 +90,6 @@ export default function SharedChatbotPage() {
         }
 
         setChatbot(chatbotData)
-
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const todayString = today.toISOString()
-
-        const { data: usageData, error: usageError } = await supabase
-          .from("usage")
-          .select("messages, tokens")
-          .eq("user_id", chatbotData.user_id)
-          .gte("created_at", todayString)
-
-        if (!usageError && usageData && usageData.length > 0) {
-          const totalMessages = usageData.reduce((acc, item) => acc + (item.messages || 0), 0)
-          const totalTokens = usageData.reduce((acc, item) => acc + (item.tokens || 0), 0)
-          setUsage({ messages: totalMessages, tokens: totalTokens })
-
-          if (totalMessages >= MESSAGE_LIMIT || totalTokens >= TOKEN_LIMIT) {
-            setLimitReached(true)
-          }
-        }
-
       } catch (err) {
         console.error('Error loading shared chatbot:', err)
         setError('An unexpected error occurred.')
@@ -134,20 +105,38 @@ export default function SharedChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || sending || limitReached) return
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  }, [input]);
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!input.trim() || sending) return
 
     setSending(true)
+    const currentInput = input;
+    setInput('')
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: currentInput,
     }
 
-    const newMessages = [...messages, userMessage]
-    setMessages(newMessages)
-    setInput('')
+    setMessages(prev => [...prev, userMessage])
+
+    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+    };
+    
+    setMessages(prev => [...prev, assistantMessage]);
 
     try {
       const response = await fetch('/api/chat', {
@@ -156,59 +145,83 @@ export default function SharedChatbotPage() {
         body: JSON.stringify({
           chatbotId: chatbot!.id,
           shareToken,
-          message: input,
-          history: newMessages.slice(0, -1),
+          message: currentInput,
+          history: messages.map(m => ({ role: m.role, content: m.content })),
           isPublic: true,
+          stream: true
         }),
       })
 
-      if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to get response from the server.')
-      }
+      if (!response.ok) throw new Error('Failed to connect');
 
-      const { reply, tokens } = await response.json()
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = "";
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: reply,
-      }
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      setMessages(prev => [...prev, assistantMessage])
-
-      const updatedUsage = { messages: usage.messages + 1, tokens: usage.tokens + (tokens || 0) }
-      setUsage(updatedUsage)
-
-      if (updatedUsage.messages >= MESSAGE_LIMIT || updatedUsage.tokens >= TOKEN_LIMIT) {
-        setLimitReached(true)
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+          
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.content) {
+                  accumulatedContent += data.content;
+                  setMessages((prev) => 
+                    prev.map((msg) => 
+                      msg.id === assistantMessageId 
+                        ? { ...msg, content: accumulatedContent } 
+                        : msg
+                    )
+                  );
+                }
+              } catch (e) {
+                // Ignore parse errors for partial chunks
+              }
+            }
+          }
+        }
       }
     } catch (error: any) {
       console.error('Chat error:', error)
-      const errorMessage: Message = {
-        id: (Date.now() + 2).toString(),
-        role: 'assistant',
-        content: `Sorry, an error occurred: ${error.message}`,
-      }
-      setMessages(prev => [...prev, errorMessage])
+      setMessages((prev) => 
+        prev.map((msg) => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: `Sorry, an error occurred: ${error.message}` } 
+            : msg
+        )
+      );
     } finally {
       setSending(false)
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   const selectedTheme = THEMES.find((t) => t.value === chatbot?.theme) || THEMES[0];
 
   if (loading) return (
-    <div className="h-screen w-full flex items-center justify-center bg-gray-100 dark:bg-black">
+    <div className="h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-[#0b0b0b]">
       <Loader2 className="h-8 w-8 animate-spin text-gray-700 dark:text-gray-300" />
     </div>
   )
 
   if (error) return (
-    <div className="h-screen w-full flex items-center justify-center bg-gray-100 dark:bg-black">
-      <Card className="p-6 m-4 text-center">
-        <h2 className="text-xl font-semibold text-red-600">Error</h2>
-        <p className="text-gray-700 dark:text-gray-300 mt-2">{error}</p>
+    <div className="h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-[#0b0b0b]">
+      <Card className="p-8 m-4 text-center shadow-2xl rounded-3xl border-none">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+        <p className="text-gray-700 dark:text-gray-300 mb-6">{error}</p>
+        <Button onClick={() => window.location.reload()} variant="outline" className="rounded-xl">Try Again</Button>
       </Card>
     </div>
   )
@@ -216,70 +229,117 @@ export default function SharedChatbotPage() {
   if (!chatbot) return null
 
   return (
-    <div className="h-screen w-full flex flex-col bg-gray-100 dark:bg-black">
+    <div className="h-screen w-full flex flex-col bg-gray-50 dark:bg-[#0b0b0b] overflow-hidden relative">
       {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-black">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <h1 className="font-bold text-lg text-gray-900 dark:text-white">{chatbot.name}</h1>
+      <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0b0b0b]/80 backdrop-blur-md">
+        <div className="max-w-3xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg ${selectedTheme.color}`}>
+              <Bot className={`h-5 w-5 sm:h-6 sm:w-6 ${selectedTheme.textColor}`} />
+            </div>
+            <div>
+              <h1 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-none">{chatbot.name}</h1>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">Active</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
+              <Globe className="h-3 w-3 text-gray-500" />
+              <span className="text-[10px] text-gray-500 font-medium uppercase">Public Link</span>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* CHAT AREA */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 sm:py-6 max-w-2xl mx-auto w-full">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12 text-gray-700 dark:text-gray-300">
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">Start Chatting</h2>
-            <p className="opacity-80">This is a shared chatbot. Your conversation is temporary.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {messages.map(msg => (
-              <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`px-4 py-3 rounded-lg max-w-[75%] prose dark:prose-invert ${
-                    msg.role === 'user'
-                      ? `${selectedTheme.color} ${selectedTheme.textColor} rounded-br-none border border-white/30` // user messages themed
-                      : 'bg-white dark:bg-gray-800 text-black dark:text-white rounded-bl-none border border-gray-300 dark:border-gray-700' // assistant always white/black manually
-                  }`}
-                >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                </div>
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-32 w-full scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+        <div className="max-w-3xl mx-auto w-full">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
+              <div className={`w-20 h-20 rounded-3xl mb-8 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-transform duration-300 ${selectedTheme.color}`}>
+                <Bot className={`h-10 w-10 ${selectedTheme.textColor}`} />
               </div>
-            ))}
-            {sending && (
-              <div className="flex justify-start">
-                <div className="bg-gray-300 dark:bg-gray-700 text-black dark:text-white px-4 py-3 rounded-lg rounded-bl-none">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Hello there!</h2>
+              <p className="text-lg text-gray-600 dark:text-gray-400 max-w-sm">
+                I'm {chatbot.name}. How can I help you today?
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {messages.map(msg => (
+                <div key={msg.id} className={`flex items-start gap-3 sm:gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full shrink-0 flex items-center justify-center shadow-sm ${
+                    msg.role === 'user' ? 'bg-gray-200 dark:bg-gray-800' : selectedTheme.color
+                  }`}>
+                    {msg.role === 'user' ? (
+                      <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-400" />
+                    ) : (
+                      <Bot className={`h-4 w-4 sm:h-5 sm:w-5 ${selectedTheme.textColor}`} />
+                    )}
+                  </div>
+                  <div
+                    className={`px-4 py-3 rounded-2xl max-w-[85%] sm:max-w-[80%] shadow-sm prose dark:prose-invert break-words text-sm sm:text-base ${
+                      msg.role === 'user'
+                        ? 'bg-gray-100 dark:bg-gray-800 text-black dark:text-white rounded-tr-none'
+                        : 'bg-white dark:bg-[#1a1a1a] text-black dark:text-white rounded-tl-none border border-gray-200 dark:border-gray-800'
+                    }`}
+                  >
+                    {msg.content ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    ) : (
+                      <div className="flex gap-1 py-2">
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+              ))}
+              <div ref={messagesEndRef} className="h-4" />
+            </div>
+          )}
+        </div>
       </main>
 
       {/* INPUT */}
-      <footer className="sticky bottom-0 border-t border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-black">
-        <form onSubmit={handleSendMessage} className="max-w-2xl mx-auto px-4 py-3 flex gap-2">
-          <Input
-            placeholder={`Message ${chatbot.name}...`}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={sending || limitReached}
-            className="flex-1 rounded-full bg-white dark:bg-gray-900 text-black dark:text-white placeholder-gray-400 dark:placeholder-gray-500 border border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-600"
-          />
-          <Button
-            type="submit"
-            disabled={sending || !input.trim() || limitReached}
-            className="p-3 rounded-full bg-gray-800 text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+      <div className="absolute bottom-0 left-0 w-full p-4 sm:p-6 pointer-events-none">
+        <div className="max-w-3xl mx-auto w-full pointer-events-auto">
+          <form
+            onSubmit={handleSendMessage}
+            className="relative flex items-end gap-2 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-3xl p-2 shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-[0_0_50px_rgba(0,0,0,0.3)] transition-all focus-within:ring-2 focus-within:ring-gray-200 dark:focus-within:ring-gray-800"
           >
-            {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-          </Button>
-        </form>
-        <p className="text-xs text-center text-gray-500 dark:text-gray-400 pt-2">
-          Powered by <a href="https://heho.vercel.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700 dark:hover:text-gray-200">HeHo</a>.
-        </p>
-      </footer>
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={`Message ${chatbot.name}...`}
+              disabled={sending}
+              rows={1}
+              className="flex-1 min-h-[44px] max-h-[200px] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-3 px-4 text-black dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 text-sm sm:text-base"
+            />
+            <Button 
+              type="submit" 
+              disabled={sending || !input.trim()}
+              size="icon"
+              className={`h-10 w-10 rounded-2xl shrink-0 mb-0.5 transition-all duration-300 ${
+                input.trim() ? selectedTheme.color + ' ' + selectedTheme.textColor + ' shadow-lg scale-100' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 scale-90'
+              }`}
+            >
+              {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            </Button>
+          </form>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-3">
+            <p className="text-[10px] text-gray-400 dark:text-gray-600 font-medium">
+              Shift + Enter for new line • Powered by <a href="https://heho.vercel.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400">HeHo</a>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
