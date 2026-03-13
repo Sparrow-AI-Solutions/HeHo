@@ -147,38 +147,49 @@ ADVANCED OPERATIONAL PROTOCOLS:
     if (owner.supabase_url && owner.supabase_key_encrypted) {
       let dataContext = "\n### KNOWLEDGE BASE & DATA ACCESS\n"
       let writeCapabilities = ""
+      let editCapabilities = ""
 
       for (let i = 1; i <= 3; i++) {
         const table = chatbot[`data_table_${i}`]
         const canRead = chatbot[`data_table_${i}_read`]
         const canWrite = chatbot[`data_table_${i}_write`]
+        const canEdit = chatbot[`data_table_${i}_edit`]
         if (!table) continue
 
-        const db = createClient(
-          owner.supabase_url,
-          owner.supabase_key_encrypted
-        )
+        const db = createClient(owner.supabase_url, owner.supabase_key_encrypted)
 
         if (canRead) {
           const { data } = await db.from(table).select('*')
           if (data && data.length > 0) {
-            dataContext += `\nInformation regarding ${table}:\n${JSON.stringify(data, null, 2)}\n`
+            dataContext += `
+Information regarding ${table}:
+${JSON.stringify(data, null, 2)}
+`
           } else {
-            dataContext += `\nInformation regarding ${table}: Currently empty.\n`
+            dataContext += `
+Information regarding ${table}: Currently empty.
+`
           }
         }
 
         if (canWrite) {
-          const schema = await getTableSchema(
-            owner.supabase_url,
-            owner.supabase_key_encrypted,
-            table
-          )
-
+          const schema = await getTableSchema(owner.supabase_url, owner.supabase_key_encrypted, table)
           if (schema) {
-            writeCapabilities += `\n- Capability: Record/Update ${table}. 
+            writeCapabilities += `
+- Capability: Record/Update ${table}. 
   Required Fields: ${schema.map(s => s.column_name).join(', ')}
   Action Trigger: When the user confirms saving this info, output EXACTLY: [ADD_DATA]{"tableName":"${table}","data":{...}}
+`
+          }
+        }
+
+        if (canEdit) {
+          const schema = await getTableSchema(owner.supabase_url, owner.supabase_key_encrypted, table)
+          if (schema) {
+            editCapabilities += `
+- Capability: Edit existing entries in ${table}.
+  Required Fields: id, plus any fields to update from ${schema.map(s => s.column_name).join(', ')}
+  Action Trigger: When the user confirms editing an existing entry, output EXACTLY: [EDIT_DATA]{"tableName":"${table}","id":<id>,"data":{...}}
 `
           }
         }
@@ -187,16 +198,36 @@ ADVANCED OPERATIONAL PROTOCOLS:
       if (dataContext !== "\n### KNOWLEDGE BASE & DATA ACCESS\n") {
         systemPrompt += dataContext
       }
-      
+
       if (writeCapabilities) {
-        systemPrompt += `\n### DATA RECORDING PROTOCOL\n${writeCapabilities}
+        systemPrompt += `
+### DATA RECORDING PROTOCOL
+${writeCapabilities}
 IMPORTANT RULES FOR RECORDING DATA:
 - Act naturally. Do not say "I am adding this to the database". Say "I've noted that down for you" or "I've saved those details".
 - ONLY trigger the [ADD_DATA] command when the user has provided necessary info and confirmed saving.
 - IMPORTANT: Output your natural conversational response AND the [ADD_DATA] command in a SINGLE MESSAGE.
 - The [ADD_DATA] command MUST be on a NEW LINE at the VERY END of your response.
-- Example: "Great! I've noted that down for you.\n\n[ADD_DATA]{...}"
+- Example: "Great! I've noted that down for you.
+
+[ADD_DATA]{...}"
 - Ensure the JSON in [ADD_DATA] strictly follows the schema provided.
+`
+      }
+
+      if (editCapabilities) {
+        systemPrompt += `
+### DATA EDITING PROTOCOL
+${editCapabilities}
+IMPORTANT RULES FOR EDITING DATA:
+- ONLY use [EDIT_DATA] when the user asks to modify an existing record and confirms the update.
+- Always include record id in [EDIT_DATA].
+- IMPORTANT: Output your natural conversational response AND the [EDIT_DATA] command in a SINGLE MESSAGE.
+- The [EDIT_DATA] command MUST be on a NEW LINE at the VERY END of your response.
+- Example: "Done — I updated that for you.
+
+[EDIT_DATA]{"tableName":"table_name","id":123,"data":{...}}"
+- Ensure the JSON in [EDIT_DATA] is valid.
 `
       }
     }
@@ -250,7 +281,7 @@ IMPORTANT RULES FOR RECORDING DATA:
       lastText.includes('confirm') ||
       lastText.includes('save')
 
-    if (reply.startsWith('[ADD_DATA]') && !isConfirmed) {
+    if ((reply.startsWith('[ADD_DATA]') || reply.startsWith('[EDIT_DATA]')) && !isConfirmed) {
       return NextResponse.json(
         { reply: 'Please confirm before saving this information.' },
         { headers: corsHeaders }
@@ -279,6 +310,32 @@ IMPORTANT RULES FOR RECORDING DATA:
           : `I've successfully saved those details to ${payload.tableName} for you.`
       } catch (e) {
         console.error('Error processing ADD_DATA:', e);
+      }
+    }
+
+    if (reply.includes('[EDIT_DATA]')) {
+      try {
+        const editMatch = reply.match(/\[EDIT_DATA\]\s*({[\s\S]*})/)
+        if (editMatch) {
+          const textBefore = reply.substring(0, editMatch.index).trim()
+          const payload = JSON.parse(editMatch[1].trim())
+
+          if (!payload.tableName || payload.id === undefined || !payload.data) {
+            throw new Error('Invalid EDIT_DATA format')
+          }
+
+          const db = createClient(owner.supabase_url, owner.supabase_key_encrypted)
+          await db.from(payload.tableName).update(payload.data).eq('id', payload.id)
+          dbWriteOccurred = true
+
+          reply = textBefore
+            ? `${textBefore}
+
+(I've successfully updated that entry in ${payload.tableName} for you.)`
+            : `I've successfully updated that entry in ${payload.tableName} for you.`
+        }
+      } catch (e) {
+        console.error('Error processing EDIT_DATA:', e)
       }
     }
 
