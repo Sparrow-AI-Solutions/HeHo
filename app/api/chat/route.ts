@@ -171,13 +171,15 @@ ADVANCED OPERATIONAL PROTOCOLS:
 IMPORTANT RULES FOR RECORDING DATA:
 - Act naturally. Do not say "I am adding this to the database". Say "I've noted that down for you" or "I've saved those details".
 - INTELLIGENT DATA COLLECTION: Before saving, ensure you have ALL required fields. If any are missing, ask the user for clarification.
-- ONLY trigger the [ADD_DATA] command when the user has explicitly confirmed saving AND you have all required fields.
+- CRITICAL: When the user confirms the details (e.g., says "yes", "ya do", "correct", "finalize it"), you MUST include the [ADD_DATA] command in that EXACT SAME response. DO NOT wait for another turn.
+- ONLY trigger the [ADD_DATA] command when you have all required fields.
 - IMPORTANT: Output your natural conversational response AND the [ADD_DATA] command in a SINGLE MESSAGE.
 - The [ADD_DATA] command MUST be on a NEW LINE at the VERY END of your response.
-- Example: "Great! I've noted that down for you.\n\n[ADD_DATA]{\"tableName\":\"table_name\",\"data\":{...}}"
+- Example: "Perfect! I've finalized your order.\n\n[ADD_DATA]{\"tableName\":\"table_name\",\"data\":{...}}"
 - Ensure the JSON in [ADD_DATA] strictly follows the schema provided.
 - VALIDATION: Double-check all field values are valid and non-empty before triggering [ADD_DATA].
 - If the user provides partial information, ask clarifying questions to complete the data set.
+- NO EXCEPTIONS: If the user says "yes" to a summary you provided, the [ADD_DATA] command MUST be at the end of your next message.
 `
       }
     }
@@ -261,7 +263,7 @@ IMPORTANT RULES FOR RECORDING DATA:
           // Check if the reply contains [ADD_DATA] command - Robust detection
           if (fullReply.includes('[ADD_DATA]')) {
             try {
-              const addDataMatch = fullReply.match(/\[ADD_DATA\]\s*({[^}]*})/)
+              const addDataMatch = fullReply.match(/\[ADD_DATA\]\s*({[\s\S]*})/)
               if (addDataMatch) {
                 const jsonString = addDataMatch[1].trim()
                 const textBefore = fullReply.substring(0, addDataMatch.index).trim()
@@ -332,7 +334,7 @@ IMPORTANT RULES FOR RECORDING DATA:
       if (reply.includes('[ADD_DATA]')) {
         try {
           // Extract the ADD_DATA command and its JSON payload
-          const addDataMatch = reply.match(/\[ADD_DATA\]\s*({[^}]*})/)
+          const addDataMatch = reply.match(/\[ADD_DATA\]\s*({[\s\S]*})/)
           if (addDataMatch) {
             const jsonString = addDataMatch[1].trim()
             const textBefore = reply.substring(0, addDataMatch.index).trim()
