@@ -4,7 +4,7 @@ import type React from 'react'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import { useParams } from 'next/navigation'
 import { Send, Loader2 } from 'lucide-react'
@@ -53,7 +53,9 @@ export default function SharedChatbotPage() {
   const [error, setError] = useState<string | null>(null)
   const [usage, setUsage] = useState<Usage>({ messages: 0, tokens: 0 })
   const [limitReached, setLimitReached] = useState(false)
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const params = useParams()
   const supabase = createClient()
   const shareToken = params.id as string
@@ -134,8 +136,16 @@ export default function SharedChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  }, [input]);
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (!input.trim() || sending || limitReached) return
 
     setSending(true)
@@ -196,17 +206,24 @@ export default function SharedChatbotPage() {
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   const selectedTheme = THEMES.find((t) => t.value === chatbot?.theme) || THEMES[0];
 
   if (loading) return (
-    <div className="h-screen w-full flex items-center justify-center bg-gray-100 dark:bg-black">
+    <div className="h-screen w-full flex items-center justify-center bg-white dark:bg-black">
       <Loader2 className="h-8 w-8 animate-spin text-gray-700 dark:text-gray-300" />
     </div>
   )
 
   if (error) return (
-    <div className="h-screen w-full flex items-center justify-center bg-gray-100 dark:bg-black">
-      <Card className="p-6 m-4 text-center">
+    <div className="h-screen w-full flex items-center justify-center bg-white dark:bg-black">
+      <Card className="p-6 m-4 text-center border-red-200 dark:border-red-900">
         <h2 className="text-xl font-semibold text-red-600">Error</h2>
         <p className="text-gray-700 dark:text-gray-300 mt-2">{error}</p>
       </Card>
@@ -216,70 +233,92 @@ export default function SharedChatbotPage() {
   if (!chatbot) return null
 
   return (
-    <div className="h-screen w-full flex flex-col bg-gray-100 dark:bg-black">
+    <div className="h-screen w-full flex flex-col bg-white dark:bg-black overflow-hidden relative">
       {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-black">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <h1 className="font-bold text-lg text-gray-900 dark:text-white">{chatbot.name}</h1>
+      <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/80 backdrop-blur-md">
+        <div className="max-w-3xl mx-auto px-4 py-3 sm:py-4">
+          <h1 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">{chatbot.name}</h1>
         </div>
       </header>
 
       {/* CHAT AREA */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 sm:py-6 max-w-2xl mx-auto w-full">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12 text-gray-700 dark:text-gray-300">
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">Start Chatting</h2>
-            <p className="opacity-80">This is a shared chatbot. Your conversation is temporary.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {messages.map(msg => (
-              <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`px-4 py-3 rounded-lg max-w-[75%] prose dark:prose-invert ${
-                    msg.role === 'user'
-                      ? `${selectedTheme.color} ${selectedTheme.textColor} rounded-br-none border border-white/30` // user messages themed
-                      : 'bg-white dark:bg-gray-800 text-black dark:text-white rounded-bl-none border border-gray-300 dark:border-gray-700' // assistant always white/black manually
-                  }`}
-                >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                </div>
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-32 w-full">
+        <div className="max-w-3xl mx-auto w-full">
+          {messages.length === 0 ? (
+            <div className="h-[60vh] flex flex-col items-center justify-center text-center px-4">
+              <div className={`w-16 h-16 rounded-2xl mb-6 flex items-center justify-center ${selectedTheme.color} shadow-lg`}>
+                <span className={`text-2xl font-bold ${selectedTheme.textColor}`}>
+                  {chatbot.name.charAt(0).toUpperCase()}
+                </span>
               </div>
-            ))}
-            {sending && (
-              <div className="flex justify-start">
-                <div className="bg-gray-300 dark:bg-gray-700 text-black dark:text-white px-4 py-3 rounded-lg rounded-bl-none">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+              <h2 className="text-2xl font-bold text-black dark:text-white mb-2">Hello!</h2>
+              <p className="text-gray-500 dark:text-gray-400 max-w-xs">
+                I'm {chatbot.name}. How can I help you today?
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {messages.map(msg => (
+                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`px-4 py-3 rounded-2xl max-w-[85%] sm:max-w-[75%] shadow-sm prose dark:prose-invert break-words ${
+                      msg.role === 'user'
+                        ? `${selectedTheme.color} ${selectedTheme.textColor} rounded-br-none`
+                        : 'bg-gray-100 dark:bg-gray-900 text-black dark:text-white rounded-bl-none border border-gray-200 dark:border-gray-800'
+                    }`}
+                  >
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                  </div>
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+              ))}
+              {sending && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 dark:bg-gray-900 text-black dark:text-white px-4 py-3 rounded-2xl rounded-bl-none border border-gray-200 dark:border-gray-800">
+                    <Loader2 className="h-4 w-4 animate-spin opacity-50" />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
       </main>
 
-      {/* INPUT */}
-      <footer className="sticky bottom-0 border-t border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-black">
-        <form onSubmit={handleSendMessage} className="max-w-2xl mx-auto px-4 py-3 flex gap-2">
-          <Input
-            placeholder={`Message ${chatbot.name}...`}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={sending || limitReached}
-            className="flex-1 rounded-full bg-white dark:bg-gray-900 text-black dark:text-white placeholder-gray-400 dark:placeholder-gray-500 border border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-600"
-          />
-          <Button
-            type="submit"
-            disabled={sending || !input.trim() || limitReached}
-            className="p-3 rounded-full bg-gray-800 text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+      {/* FLOATING INPUT */}
+      <div className="absolute bottom-0 left-0 w-full p-4 sm:p-6 pointer-events-none">
+        <div className="max-w-3xl mx-auto w-full pointer-events-auto">
+          <form 
+            onSubmit={handleSendMessage} 
+            className="relative flex items-end gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-2 shadow-2xl transition-all focus-within:border-gray-400 dark:focus-within:border-gray-600"
           >
-            {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-          </Button>
-        </form>
-        <p className="text-xs text-center text-gray-500 dark:text-gray-400 pt-2">
-          Powered by <a href="https://heho.vercel.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700 dark:hover:text-gray-200">HeHo</a>.
-        </p>
-      </footer>
+            <Textarea
+              ref={textareaRef}
+              placeholder={`Message ${chatbot.name}...`}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={sending || limitReached}
+              rows={1}
+              className="flex-1 min-h-[44px] max-h-[200px] bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-3 px-3 text-black dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            />
+            <Button
+              type="submit"
+              disabled={sending || !input.trim() || limitReached}
+              size="icon"
+              className={`h-10 w-10 rounded-xl shrink-0 mb-0.5 transition-all ${
+                input.trim() ? selectedTheme.color + ' ' + selectedTheme.textColor : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
+              }`}
+            >
+              {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            </Button>
+          </form>
+          <div className="flex justify-center items-center gap-4 mt-2">
+            <p className="text-[10px] text-gray-400 dark:text-gray-600">
+              Powered by <a href="https://heho.vercel.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700 dark:hover:text-gray-200">HeHo</a>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

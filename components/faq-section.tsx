@@ -16,7 +16,7 @@ const faqs = [
   {
     question: "What AI models can I use?",
     answer:
-      "HeHo provides access to free AI models from OpenRouter, including popular models like Llama, Mistral, and Gemma. You can choose the model that best suits your needs and switch at any time.",
+      "HeHo provides access to over 35 free AI models from OpenRouter, including popular models like Llama, Mistral, and Gemma. You can choose the model that best suits your needs and switch at any time.",
   },
   {
     question: "How does the Supabase integration work?",

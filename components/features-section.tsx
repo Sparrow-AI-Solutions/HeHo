@@ -6,7 +6,7 @@ import { Zap, Database, Mail, FileText, Lock, MessageCircle } from "lucide-react
 const features = [
   {
     title: "Free AI Models",
-    description: "Access to free models from OpenRouter including Llama, Mistral, Gemma, and more",
+    description: "Access to 35+ free models from OpenRouter including Llama, Mistral, Gemma, and more",
     icon: Zap,
   },
   {
