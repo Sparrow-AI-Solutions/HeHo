@@ -126,7 +126,7 @@ You can inspect, audit, and contribute to the codebase at any time.
 
 ## 📜 License
 
-MIT License © 2026 HeHo AI
+MIT License © 2026 HeHo 
 
 ---
 
