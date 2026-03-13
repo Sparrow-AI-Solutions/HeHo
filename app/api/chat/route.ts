@@ -12,6 +12,8 @@ const POPULAR_MODELS = [
   "openrouter/hunter-alpha",
 ]
 
+const MAX_DAILY_MESSAGES = 1000
+
 async function getTableSchema(
   supabaseUrl: string,
   supabaseKey: string,
@@ -103,6 +105,30 @@ export async function POST(request: NextRequest) {
     }
 
     const owner = chatbot.users
+
+    const withinLimit = await checkDailyMessageLimit(supabaseAdmin, userId)
+    if (!withinLimit) {
+      if (stream) {
+        const encoder = new TextEncoder()
+        const limitStream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: 'your daily limit reached', isComplete: true })}\n\n`))
+            controller.close()
+          },
+        })
+
+        return new Response(limitStream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        })
+      }
+
+      return NextResponse.json({ reply: 'your daily limit reached' })
+    }
+
     if (!owner?.openrouter_key_encrypted) {
       return NextResponse.json({ error: 'API key missing' }, { status: 400 })
     }
@@ -126,37 +152,49 @@ ADVANCED OPERATIONAL PROTOCOLS:
     if (owner.supabase_url && owner.supabase_key_encrypted) {
       let dataContext = "\n### KNOWLEDGE BASE & DATA ACCESS\n"
       let writeCapabilities = ""
+      let editCapabilities = ""
 
       for (let i = 1; i <= 3; i++) {
         const table = chatbot[`data_table_${i}`]
         const canRead = chatbot[`data_table_${i}_read`]
         const canWrite = chatbot[`data_table_${i}_write`]
+        const canEdit = chatbot[`data_table_${i}_edit`]
         if (!table) continue
 
-        const db = createClient(
-          owner.supabase_url,
-          owner.supabase_key_encrypted
-        )
+        const db = createClient(owner.supabase_url, owner.supabase_key_encrypted)
 
         if (canRead) {
           const { data } = await db.from(table).select('*')
           if (data && data.length > 0) {
-            dataContext += `\nInformation regarding ${table}:\n${JSON.stringify(data, null, 2)}\n`
+            dataContext += `
+Information regarding ${table}:
+${JSON.stringify(data, null, 2)}
+`
           } else {
-            dataContext += `\nInformation regarding ${table}: Currently empty.\n`
+            dataContext += `
+Information regarding ${table}: Currently empty.
+`
           }
         }
 
         if (canWrite) {
-          const schema = await getTableSchema(
-            owner.supabase_url,
-            owner.supabase_key_encrypted,
-            table
-          )
+          const schema = await getTableSchema(owner.supabase_url, owner.supabase_key_encrypted, table)
           if (schema) {
-            writeCapabilities += `\n- Capability: Record/Update ${table}. 
+            writeCapabilities += `
+- Capability: Record/Update ${table}. 
   Required Fields: ${schema.map(s => s.column_name).join(', ')}
   Action Trigger: When the user confirms saving this info, output EXACTLY: [ADD_DATA]{"tableName":"${table}","data":{...}}
+`
+          }
+        }
+
+        if (canEdit) {
+          const schema = await getTableSchema(owner.supabase_url, owner.supabase_key_encrypted, table)
+          if (schema) {
+            editCapabilities += `
+- Capability: Edit existing entries in ${table}.
+  Required Fields: id, plus any fields to update from ${schema.map(s => s.column_name).join(', ')}
+  Action Trigger: When the user confirms editing an existing entry, output EXACTLY: [EDIT_DATA]{"tableName":"${table}","id":<id>,"data":{...}}
 `
           }
         }
@@ -165,9 +203,11 @@ ADVANCED OPERATIONAL PROTOCOLS:
       if (dataContext !== "\n### KNOWLEDGE BASE & DATA ACCESS\n") {
         systemPrompt += dataContext
       }
-      
+
       if (writeCapabilities) {
-        systemPrompt += `\n### DATA RECORDING PROTOCOL\n${writeCapabilities}
+        systemPrompt += `
+### DATA RECORDING PROTOCOL
+${writeCapabilities}
 IMPORTANT RULES FOR RECORDING DATA:
 - Act naturally. Do not say "I am adding this to the database". Say "I've noted that down for you" or "I've saved those details".
 - INTELLIGENT DATA COLLECTION: Before saving, ensure you have ALL required fields. If any are missing, ask the user for clarification.
@@ -175,11 +215,29 @@ IMPORTANT RULES FOR RECORDING DATA:
 - ONLY trigger the [ADD_DATA] command when you have all required fields.
 - IMPORTANT: Output your natural conversational response AND the [ADD_DATA] command in a SINGLE MESSAGE.
 - The [ADD_DATA] command MUST be on a NEW LINE at the VERY END of your response.
-- Example: "Perfect! I've finalized your order.\n\n[ADD_DATA]{\"tableName\":\"table_name\",\"data\":{...}}"
+- Example: "Perfect! I've finalized your order.
+
+[ADD_DATA]{"tableName":"table_name","data":{...}}"
 - Ensure the JSON in [ADD_DATA] strictly follows the schema provided.
 - VALIDATION: Double-check all field values are valid and non-empty before triggering [ADD_DATA].
 - If the user provides partial information, ask clarifying questions to complete the data set.
 - NO EXCEPTIONS: If the user says "yes" to a summary you provided, the [ADD_DATA] command MUST be at the end of your next message.
+`
+      }
+
+      if (editCapabilities) {
+        systemPrompt += `
+### DATA EDITING PROTOCOL
+${editCapabilities}
+IMPORTANT RULES FOR EDITING DATA:
+- ONLY use [EDIT_DATA] when the user asks to modify an existing record and confirms the update.
+- Always include record id in [EDIT_DATA].
+- IMPORTANT: Output your natural conversational response AND the [EDIT_DATA] command in a SINGLE MESSAGE.
+- The [EDIT_DATA] command MUST be on a NEW LINE at the VERY END of your response.
+- Example: "Done — I updated that for you.
+
+[EDIT_DATA]{"tableName":"table_name","id":123,"data":{...}}"
+- Ensure the JSON in [EDIT_DATA] is valid.
 `
       }
     }
@@ -305,13 +363,52 @@ IMPORTANT RULES FOR RECORDING DATA:
               console.error('Error processing ADD_DATA:', e);
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
             }
+          } else if (fullReply.includes('[EDIT_DATA]')) {
+            try {
+              const editDataMatch = fullReply.match(/\[EDIT_DATA\]\s*({[\s\S]*})/)
+              if (editDataMatch) {
+                const jsonString = editDataMatch[1].trim()
+                const textBefore = fullReply.substring(0, editDataMatch.index).trim()
+                const { tableName, id, data } = JSON.parse(jsonString)
+
+                if (!tableName || id === undefined || !data) {
+                  throw new Error('Invalid EDIT_DATA format: missing tableName, id, or data')
+                }
+
+                const db = createClient(owner.supabase_url, owner.supabase_key_encrypted)
+                await db.from(tableName).update(data).eq('id', id)
+                dbWriteOccurred = true
+
+                const combinedMessage = textBefore
+                  ? `${textBefore}
+
+(I've successfully updated that entry in ${tableName} for you.)`
+                  : `I've successfully updated that entry in ${tableName} for you.`
+
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: combinedMessage, isComplete: true })}
+
+`))
+              } else {
+                const cleanedReply = fullReply.replace(/\[EDIT_DATA\][^}]*}?/, '').trim()
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: cleanedReply, isComplete: true })}
+
+`))
+              }
+            } catch (e) {
+              console.error('Error processing EDIT_DATA:', e)
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}
+
+`))
+            }
           } else {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}\n\n`))
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullReply, isComplete: true })}
+
+`))
           }
 
           // Update usage at the end of stream
           const tokensUsed = Math.ceil(fullReply.length / 4); // Fallback estimation
-          await updateUsage(supabaseAdmin, userId, tokensUsed, dbWriteOccurred);
+      await updateUsage(supabaseAdmin, userId, tokensUsed, dbWriteOccurred);
           controller.close();
         }
       });
@@ -371,6 +468,33 @@ IMPORTANT RULES FOR RECORDING DATA:
         }
       }
 
+      if (reply.includes('[EDIT_DATA]')) {
+        try {
+          const editDataMatch = reply.match(/\[EDIT_DATA\]\s*({[\s\S]*})/)
+          if (editDataMatch) {
+            const jsonString = editDataMatch[1].trim()
+            const textBefore = reply.substring(0, editDataMatch.index).trim()
+            const { tableName, id, data } = JSON.parse(jsonString)
+
+            if (!tableName || id === undefined || !data) {
+              throw new Error('Invalid EDIT_DATA format: missing tableName, id, or data')
+            }
+
+            const db = createClient(owner.supabase_url, owner.supabase_key_encrypted)
+            await db.from(tableName).update(data).eq('id', id)
+            dbWriteOccurred = true
+
+            reply = textBefore
+              ? `${textBefore}
+
+(I've successfully updated that entry in ${tableName} for you.)`
+              : `I've successfully updated that entry in ${tableName} for you.`
+          }
+        } catch (e) {
+          console.error('Error processing EDIT_DATA:', e)
+        }
+      }
+
       await updateUsage(supabaseAdmin, userId, tokensUsed, dbWriteOccurred);
       return NextResponse.json({ reply, tokens: tokensUsed })
     }
@@ -411,4 +535,18 @@ async function updateUsage(supabaseAdmin: any, userId: string, tokensUsed: numbe
       db_writes: dbWriteOccurred ? 1 : 0,
     })
   }
+}
+
+async function checkDailyMessageLimit(supabaseAdmin: any, userId: string) {
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data: existing } = await supabaseAdmin
+    .from('usage')
+    .select('messages')
+    .eq('user_id', userId)
+    .eq('month', today)
+    .maybeSingle()
+
+  const messagesToday = Number(existing?.messages) || 0
+  return messagesToday < MAX_DAILY_MESSAGES
 }

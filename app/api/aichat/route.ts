@@ -13,6 +13,8 @@ const POPULAR_MODELS = [
   "openrouter/hunter-alpha",
 ]
 
+const MAX_DAILY_MESSAGES = 1000
+
 /* ───────────────── CORS ───────────────── */
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,6 +121,15 @@ export async function POST(req: Request) {
     }
 
     const owner = chatbot.users
+
+    const withinLimit = await checkDailyMessageLimit(supabaseAdmin, userId)
+    if (!withinLimit) {
+      return NextResponse.json(
+        { reply: 'your daily limit reached' },
+        { headers: corsHeaders }
+      )
+    }
+
     if (!owner?.openrouter_key_encrypted) {
       return NextResponse.json(
         { error: 'OpenRouter key missing' },
@@ -147,38 +158,49 @@ ADVANCED OPERATIONAL PROTOCOLS:
     if (owner.supabase_url && owner.supabase_key_encrypted) {
       let dataContext = "\n### KNOWLEDGE BASE & DATA ACCESS\n"
       let writeCapabilities = ""
+      let editCapabilities = ""
 
       for (let i = 1; i <= 3; i++) {
         const table = chatbot[`data_table_${i}`]
         const canRead = chatbot[`data_table_${i}_read`]
         const canWrite = chatbot[`data_table_${i}_write`]
+        const canEdit = chatbot[`data_table_${i}_edit`]
         if (!table) continue
 
-        const db = createClient(
-          owner.supabase_url,
-          owner.supabase_key_encrypted
-        )
+        const db = createClient(owner.supabase_url, owner.supabase_key_encrypted)
 
         if (canRead) {
           const { data } = await db.from(table).select('*')
           if (data && data.length > 0) {
-            dataContext += `\nInformation regarding ${table}:\n${JSON.stringify(data, null, 2)}\n`
+            dataContext += `
+Information regarding ${table}:
+${JSON.stringify(data, null, 2)}
+`
           } else {
-            dataContext += `\nInformation regarding ${table}: Currently empty.\n`
+            dataContext += `
+Information regarding ${table}: Currently empty.
+`
           }
         }
 
         if (canWrite) {
-          const schema = await getTableSchema(
-            owner.supabase_url,
-            owner.supabase_key_encrypted,
-            table
-          )
-
+          const schema = await getTableSchema(owner.supabase_url, owner.supabase_key_encrypted, table)
           if (schema) {
-            writeCapabilities += `\n- Capability: Record/Update ${table}. 
+            writeCapabilities += `
+- Capability: Record/Update ${table}. 
   Required Fields: ${schema.map(s => s.column_name).join(', ')}
   Action Trigger: When the user confirms saving this info, output EXACTLY: [ADD_DATA]{"tableName":"${table}","data":{...}}
+`
+          }
+        }
+
+        if (canEdit) {
+          const schema = await getTableSchema(owner.supabase_url, owner.supabase_key_encrypted, table)
+          if (schema) {
+            editCapabilities += `
+- Capability: Edit existing entries in ${table}.
+  Required Fields: id, plus any fields to update from ${schema.map(s => s.column_name).join(', ')}
+  Action Trigger: When the user confirms editing an existing entry, output EXACTLY: [EDIT_DATA]{"tableName":"${table}","id":<id>,"data":{...}}
 `
           }
         }
@@ -187,16 +209,36 @@ ADVANCED OPERATIONAL PROTOCOLS:
       if (dataContext !== "\n### KNOWLEDGE BASE & DATA ACCESS\n") {
         systemPrompt += dataContext
       }
-      
+
       if (writeCapabilities) {
-        systemPrompt += `\n### DATA RECORDING PROTOCOL\n${writeCapabilities}
+        systemPrompt += `
+### DATA RECORDING PROTOCOL
+${writeCapabilities}
 IMPORTANT RULES FOR RECORDING DATA:
 - Act naturally. Do not say "I am adding this to the database". Say "I've noted that down for you" or "I've saved those details".
 - ONLY trigger the [ADD_DATA] command when the user has provided necessary info and confirmed saving.
 - IMPORTANT: Output your natural conversational response AND the [ADD_DATA] command in a SINGLE MESSAGE.
 - The [ADD_DATA] command MUST be on a NEW LINE at the VERY END of your response.
-- Example: "Great! I've noted that down for you.\n\n[ADD_DATA]{...}"
+- Example: "Great! I've noted that down for you.
+
+[ADD_DATA]{...}"
 - Ensure the JSON in [ADD_DATA] strictly follows the schema provided.
+`
+      }
+
+      if (editCapabilities) {
+        systemPrompt += `
+### DATA EDITING PROTOCOL
+${editCapabilities}
+IMPORTANT RULES FOR EDITING DATA:
+- ONLY use [EDIT_DATA] when the user asks to modify an existing record and confirms the update.
+- Always include record id in [EDIT_DATA].
+- IMPORTANT: Output your natural conversational response AND the [EDIT_DATA] command in a SINGLE MESSAGE.
+- The [EDIT_DATA] command MUST be on a NEW LINE at the VERY END of your response.
+- Example: "Done — I updated that for you.
+
+[EDIT_DATA]{"tableName":"table_name","id":123,"data":{...}}"
+- Ensure the JSON in [EDIT_DATA] is valid.
 `
       }
     }
@@ -250,37 +292,16 @@ IMPORTANT RULES FOR RECORDING DATA:
       lastText.includes('confirm') ||
       lastText.includes('save')
 
-    if (reply.startsWith('[ADD_DATA]') && !isConfirmed) {
+    if ((reply.startsWith('[ADD_DATA]') || reply.startsWith('[EDIT_DATA]')) && !isConfirmed) {
       return NextResponse.json(
         { reply: 'Please confirm before saving this information.' },
         { headers: corsHeaders }
       )
     }
 
-    /* ───── ADD_DATA EXECUTION ───── */
-    if (reply.includes('[ADD_DATA]')) {
-      try {
-        const parts = reply.split('[ADD_DATA]')
-        const textBefore = parts[0].trim()
-        const jsonString = parts[1].trim()
-        
-        const payload = JSON.parse(jsonString)
-        const db = createClient(
-          owner.supabase_url,
-          owner.supabase_key_encrypted
-        )
-
-        await db.from(payload.tableName).insert([payload.data])
-        dbWriteOccurred = true
-        
-        // Combine natural text with confirmation
-        reply = textBefore 
-          ? `${textBefore}\n\n(I've successfully saved those details to ${payload.tableName} for you.)`
-          : `I've successfully saved those details to ${payload.tableName} for you.`
-      } catch (e) {
-        console.error('Error processing ADD_DATA:', e);
-      }
-    }
+    const commandResult = await processDataCommands(reply, owner)
+    reply = commandResult.reply
+    dbWriteOccurred = commandResult.dbWriteOccurred
 
     /* ───── USAGE TRACKING ───── */
     const month = new Date().toISOString().split('T')[0]
@@ -322,4 +343,73 @@ IMPORTANT RULES FOR RECORDING DATA:
       { status: 500, headers: corsHeaders }
     )
   }
+}
+
+
+
+
+async function processDataCommands(reply: string, owner: any) {
+  const commandRegex = /\[(ADD_DATA|EDIT_DATA)\]\s*({[\s\S]*?})(?=\s*\[(?:ADD_DATA|EDIT_DATA)\]|\s*$)/g
+  const db = createClient(owner.supabase_url, owner.supabase_key_encrypted)
+  const confirmations: string[] = []
+  let dbWriteOccurred = false
+
+  let match: RegExpExecArray | null
+  while ((match = commandRegex.exec(reply)) !== null) {
+    const commandType = match[1]
+    const payloadRaw = match[2]
+
+    try {
+      const payload = JSON.parse(payloadRaw)
+
+      if (commandType === 'ADD_DATA') {
+        if (!payload.tableName || !payload.data) {
+          throw new Error('Invalid ADD_DATA format')
+        }
+
+        await db.from(payload.tableName).insert([payload.data])
+        dbWriteOccurred = true
+        confirmations.push(`(I've successfully saved those details to ${payload.tableName} for you.)`)
+      }
+
+      if (commandType === 'EDIT_DATA') {
+        if (!payload.tableName || payload.id === undefined || !payload.data) {
+          throw new Error('Invalid EDIT_DATA format')
+        }
+
+        await db.from(payload.tableName).update(payload.data).eq('id', payload.id)
+        dbWriteOccurred = true
+        confirmations.push(`(I've successfully updated that entry in ${payload.tableName} for you.)`)
+      }
+    } catch (error) {
+      console.error(`Error processing ${commandType}:`, error)
+    }
+  }
+
+  const cleanedReply = reply.replace(commandRegex, '').trim()
+  const confirmationText = confirmations.join('\n')
+
+  if (cleanedReply && confirmationText) {
+    return { reply: `${cleanedReply}\n\n${confirmationText}`, dbWriteOccurred }
+  }
+
+  if (!cleanedReply && confirmationText) {
+    return { reply: confirmationText, dbWriteOccurred }
+  }
+
+  return { reply: cleanedReply, dbWriteOccurred }
+}
+
+async function checkDailyMessageLimit(supabaseAdmin: any, userId: string) {
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data: existing } = await supabaseAdmin
+    .from('usage')
+    .select('messages')
+    .eq('user_id', userId)
+    .eq('month', today)
+    .maybeSingle()
+
+  const messagesToday = Number(existing?.messages) || 0
+  return messagesToday < MAX_DAILY_MESSAGES
 }

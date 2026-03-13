@@ -66,12 +66,15 @@ export default function CreateChatbotPage() {
     data_table_1: '',
     data_table_1_read: false,
     data_table_1_write: false,
+    data_table_1_edit: false,
     data_table_2: '',
     data_table_2_read: false,
     data_table_2_write: false,
+    data_table_2_edit: false,
     data_table_3: '',
     data_table_3_read: false,
     data_table_3_write: false,
+    data_table_3_edit: false,
   })
   const [error, setError] = useState<string | null>(null)
   const [chatbotCount, setChatbotCount] = useState(0)
@@ -183,12 +186,15 @@ export default function CreateChatbotPage() {
           data_table_1: formData.data_table_1 === '_none_' ? null : formData.data_table_1,
           data_table_1_read: formData.data_table_1_read,
           data_table_1_write: formData.data_table_1_write,
+          data_table_1_edit: formData.data_table_1_edit,
           data_table_2: formData.data_table_2 === '_none_' ? null : formData.data_table_2,
           data_table_2_read: formData.data_table_2_read,
           data_table_2_write: formData.data_table_2_write,
+          data_table_2_edit: formData.data_table_2_edit,
           data_table_3: formData.data_table_3 === '_none_' ? null : formData.data_table_3,
           data_table_3_read: formData.data_table_3_read,
           data_table_3_write: formData.data_table_3_write,
+          data_table_3_edit: formData.data_table_3_edit,
           status: 'active',
         })
         .select()
@@ -241,6 +247,14 @@ export default function CreateChatbotPage() {
               onCheckedChange={(checked) => setFormData({ ...formData, [`data_table_${index}_write`]: !!checked })}
             />
             <label htmlFor={`write-${index}`} className="text-xs text-muted-foreground cursor-pointer">Allow Write</label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`edit-${index}`}
+              checked={formData[`data_table_${index}_edit`]}
+              onCheckedChange={(checked) => setFormData({ ...formData, [`data_table_${index}_edit`]: !!checked })}
+            />
+            <label htmlFor={`edit-${index}`} className="text-xs text-muted-foreground cursor-pointer">Allow Edit</label>
           </div>
         </div>
       )}
