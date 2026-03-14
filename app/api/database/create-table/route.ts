@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { executeSupabaseQuery } from '@/lib/supabase/management-api'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,34 +59,12 @@ export async function POST(request: Request) {
 
     const sqlQuery = `CREATE TABLE IF NOT EXISTS public.${tableName} (${columnDefs});`
 
-    console.log('Executing SQL query:', sqlQuery)
+    console.log('Executing SQL query via utility:', sqlQuery)
 
-    // Call the database query endpoint using internal URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${process.env.PORT || 3000}`
-    const queryUrl = `${baseUrl}/api/database/query`
-    
-    console.log('Calling query endpoint:', queryUrl)
+    const result = await executeSupabaseQuery(supabase, user.id, sqlQuery)
 
-    const queryResponse = await fetch(queryUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': request.headers.get('cookie') || '' },
-      body: JSON.stringify({ query: sqlQuery })
-    })
-
-    const queryText = await queryResponse.text()
-    console.log('Query response status:', queryResponse.status)
-    console.log('Query response body:', queryText)
-
-    let queryResult
-    try {
-      queryResult = JSON.parse(queryText)
-    } catch (parseErr) {
-      console.error('Failed to parse query response:', queryText)
-      return NextResponse.json({ error: `Query API returned invalid response: ${queryText}` }, { status: 500 })
-    }
-
-    if (!queryResponse.ok) {
-      return NextResponse.json({ error: queryResult.error || 'Failed to create table' }, { status: queryResponse.status })
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
     // If table created successfully, add it to user_connected_tables
@@ -100,7 +79,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       message: 'Table created successfully', 
       tableName: `public.${tableName}`,
-      result: queryResult 
+      result: result.data 
     })
   } catch (err: any) {
     console.error('Error in /api/database/create-table:', err)
