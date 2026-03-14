@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Plus, Trash2, ArrowLeft } from 'lucide-react'
+import { Loader2, Plus, Trash2, ArrowLeft, AlertCircle } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from 'next/link'
@@ -68,6 +68,12 @@ export default function CreateTablePage() {
       return;
     }
 
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+      setError("Table name must start with a letter or underscore and contain only letters, numbers, and underscores.");
+      setLoading(false);
+      return;
+    }
+
     if (columns.some(col => !col.name.trim())) {
       setError("All columns must have a name.");
       setLoading(false);
@@ -87,13 +93,14 @@ export default function CreateTablePage() {
         throw new Error(result.error || 'An unknown error occurred.')
       }
 
-      setSuccess(`Successfully created table "${tableName}". Redirecting...`)
+      setSuccess(`Successfully created table "public.${tableName}". Redirecting...`)
       setTimeout(() => {
         router.push('/app/database')
       }, 2000)
 
     } catch (err: any) {
-      setError(err.message)
+      console.error('Error creating table:', err)
+      setError(err.message || 'Failed to create table')
     } finally {
       setLoading(false)
     }
@@ -220,6 +227,7 @@ export default function CreateTablePage() {
 
           {error && (
             <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
