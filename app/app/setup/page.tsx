@@ -69,26 +69,30 @@ export default function SetupWizardPage() {
   useEffect(() => {
     setMounted(true)
     const savedState = localStorage.getItem('setupState');
+    let isReconnect = false;
     if (savedState) {
       try {
-        const { step: savedStep, openRouterKey: savedOpenRouterKey, providerToken: savedProviderToken, refreshToken: savedRefreshToken } = JSON.parse(savedState);
+        const { step: savedStep, openRouterKey: savedOpenRouterKey, providerToken: savedProviderToken, refreshToken: savedRefreshToken, isReconnect: savedIsReconnect } = JSON.parse(savedState);
         setStep(savedStep || 1);
         setOpenRouterKey(savedOpenRouterKey || "");
         if (savedProviderToken) setProviderToken(savedProviderToken);
         if (savedRefreshToken) setRefreshToken(savedRefreshToken);
+        if (savedIsReconnect) isReconnect = true;
       } catch (e) {
         console.error("Failed to parse setup state:", e)
       }
       localStorage.removeItem('setupState');
     }
 
+    let currentUser: any = null;
     const checkUser = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
         router.push("/login");
         return;
       }
-      setUser(currentUser);
+      currentUser = authUser;
+      setUser(authUser);
       setLoading(false);
     };
 
@@ -110,7 +114,28 @@ export default function SetupWizardPage() {
             setProviderToken(data.provider_token)
             setRefreshToken(data.refresh_token)
             setOrganizationId(data.organization_id)
-            setStep(2);
+            
+            // If this is a reconnect request, save tokens and redirect back to settings
+            if (isReconnect && currentUser) {
+              const supabaseAdmin = createClient();
+              supabaseAdmin
+                .from('users')
+                .update({
+                  provider_token: data.provider_token,
+                  refresh_token: data.refresh_token,
+                  organization_id: data.organization_id
+                })
+                .eq('id', currentUser.id)
+                .then(() => {
+                  setSuccess('Supabase account reconnected successfully!');
+                  setTimeout(() => {
+                    router.push('/app/settings');
+                  }, 1500);
+                })
+                .catch((err) => setError(`Failed to save tokens: ${err.message}`));
+            } else {
+              setStep(2);
+            }
           }
         })
         .catch((err) => setError(err.message))

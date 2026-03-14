@@ -40,43 +40,7 @@ export default function ReconnectSupabasePage() {
     }
 
     loadUser()
-
-    // Check for OAuth callback
-    const searchParams = new URLSearchParams(window.location.search)
-    const code = searchParams.get("code")
-
-    if (code && user?.id) {
-      handleOAuthCallback(code, user.id)
-      window.history.replaceState({}, document.title, window.location.pathname)
-    }
   }, [router, supabase])
-
-  const handleOAuthCallback = async (code: string, userId: string) => {
-    setOauthLoading(true)
-    setError(null)
-    setSuccess(null)
-
-    try {
-      const response = await fetch(`/api/supabase-reconnect?code=${code}&userId=${userId}`)
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        setError(data.error || 'OAuth callback failed')
-        setStep('method')
-        return
-      }
-
-      setSuccess('Supabase account connected successfully via OAuth!')
-      setTimeout(() => {
-        router.push('/app/settings')
-      }, 2000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'OAuth callback failed')
-      setStep('method')
-    } finally {
-      setOauthLoading(false)
-    }
-  }
 
   const handleSupabaseOAuthConnect = () => {
     if (!user?.id) {
@@ -85,7 +49,17 @@ export default function ReconnectSupabasePage() {
     }
     
     setOauthLoading(true)
-    const redirectUri = window.location.origin + "/app/settings/reconnect-supabase"
+    
+    // Save state to localStorage so setup page knows this is a reconnect
+    const stateToSave = { 
+      step: 2, 
+      isReconnect: true,
+      userId: user.id
+    };
+    localStorage.setItem('setupState', JSON.stringify(stateToSave));
+
+    // Use the SAME redirect_uri as the setup flow
+    const redirectUri = window.location.origin + "/app/setup";
     const clientId = supabaseOAuthConfig.clientId
     const scope = "read:projects read:project_api_keys organizations:read"
     const supabaseOAuthUrl = `https://api.supabase.com/v1/oauth/authorize?client_id=${clientId}&response_type=code&scope=${scope}&redirect_uri=${redirectUri}`
