@@ -26,20 +26,24 @@ export async function POST(request: Request) {
       }
     )
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      console.error('Session error in /api/database/query:', sessionError)
+      return NextResponse.json({ error: 'Unauthorized: No active session found. Please log in again.' }, { status: 401 })
     }
 
+    const user = session.user
     const result = await executeSupabaseQuery(supabase, user.id, query, projectId)
 
     if (result.error) {
+      console.error(`Query failed for user ${user.id}:`, result.error)
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
     return NextResponse.json(result.data)
   } catch (err: any) {
-    console.error('Error in /api/database/query:', err)
-    return NextResponse.json({ error: err.message || 'An unexpected error occurred.' }, { status: 500 })
+    console.error('Unhandled error in /api/database/query:', err)
+    return NextResponse.json({ error: `An unexpected error occurred: ${err.message}` }, { status: 500 })
   }
 }

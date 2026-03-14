@@ -11,6 +11,7 @@ export interface QueryResult {
  */
 async function refreshSupabaseToken(supabase: SupabaseClient, userId: string, refreshToken: string) {
   try {
+    console.log('Refreshing token for user:', userId)
     const refreshRes = await fetch('https://api.supabase.com/v1/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -26,7 +27,7 @@ async function refreshSupabaseToken(supabase: SupabaseClient, userId: string, re
       const newRefreshToken = refreshData.refresh_token || refreshToken
 
       // Update tokens in database
-      await supabase
+      const { error: updateError } = await supabase
         .from('users')
         .update({
           provider_token: newAccessToken,
@@ -34,10 +35,14 @@ async function refreshSupabaseToken(supabase: SupabaseClient, userId: string, re
         })
         .eq('id', userId)
 
+      if (updateError) {
+        console.error('Error updating tokens in DB:', updateError)
+      }
+
       return { accessToken: newAccessToken, refreshToken: newRefreshToken }
     } else {
       const errorText = await refreshRes.text()
-      console.error('Token refresh failed:', errorText)
+      console.error('Token refresh failed at Supabase:', errorText)
       return null
     }
   } catch (err) {
@@ -64,8 +69,8 @@ export async function executeSupabaseQuery(
       .single()
 
     if (userError || !userData) {
-      console.error('Error fetching user data for query:', userError)
-      return { error: 'Could not retrieve your Supabase credentials.', status: 500 }
+      console.error('Error fetching user credentials from DB:', userError)
+      return { error: `Could not retrieve your Supabase credentials from database: ${userError?.message || 'Not found'}`, status: 500 }
     }
 
     let accessToken = userData.provider_token
@@ -81,11 +86,11 @@ export async function executeSupabaseQuery(
     }
 
     if (!finalProjectId) {
-      return { error: 'Project ID could not be determined.', status: 400 }
+      return { error: 'Project ID could not be determined. Please ensure your Supabase URL is set in settings.', status: 400 }
     }
 
     if (!accessToken) {
-      return { error: 'Access token not found. Please reconnect your Supabase account.', status: 400 }
+      return { error: 'Access token not found. Please reconnect your Supabase account via OAuth.', status: 400 }
     }
 
     const performRequest = async (token: string) => {
@@ -106,9 +111,12 @@ export async function executeSupabaseQuery(
     
     // Handle unauthorized (expired token)
     if (response.status === 401 && refreshToken) {
+      console.log('Access token expired, attempting refresh...')
       const refreshed = await refreshSupabaseToken(supabase, userId, refreshToken)
       if (refreshed) {
         response = await performRequest(refreshed.accessToken)
+      } else {
+        return { error: 'Session expired and token refresh failed. Please log in to Supabase again.', status: 401 }
       }
     }
 
@@ -120,7 +128,7 @@ export async function executeSupabaseQuery(
       if (response.ok) {
         return { data: { message: 'Query executed successfully' }, status: response.status }
       }
-      return { error: `API Error: ${response.status} - ${responseText}`, status: response.status }
+      return { error: `Supabase Management API Error: ${response.status} - ${responseText}`, status: response.status }
     }
 
     if (!response.ok) {
@@ -130,7 +138,7 @@ export async function executeSupabaseQuery(
     return { data: result, status: response.status }
 
   } catch (err: any) {
-    console.error('Error executing Supabase query:', err)
-    return { error: err.message || 'An unexpected error occurred.', status: 500 }
+    console.error('Error in executeSupabaseQuery utility:', err)
+    return { error: `Internal error executing query: ${err.message}`, status: 500 }
   }
 }

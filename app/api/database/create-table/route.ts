@@ -18,16 +18,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid table name. Use only letters, numbers, and underscores.' }, { status: 400 })
     }
 
-    // Validate columns
-    for (const col of columns) {
-      if (!col.name || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(col.name)) {
-        return NextResponse.json({ error: `Invalid column name: ${col.name}` }, { status: 400 })
-      }
-      if (!col.type) {
-        return NextResponse.json({ error: `Column ${col.name} must have a type` }, { status: 400 })
-      }
-    }
-
     const cookieStore = cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,10 +31,14 @@ export async function POST(request: Request) {
       }
     )
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      console.error('Session error in /api/database/create-table:', sessionError)
+      return NextResponse.json({ error: 'Unauthorized: No active session found. Please log in again.' }, { status: 401 })
     }
+
+    const user = session.user
 
     // Construct SQL query
     const columnDefs = columns.map((col: any) => {
@@ -59,11 +53,12 @@ export async function POST(request: Request) {
 
     const sqlQuery = `CREATE TABLE IF NOT EXISTS public.${tableName} (${columnDefs});`
 
-    console.log('Executing SQL query via utility:', sqlQuery)
+    console.log(`User ${user.id} executing CREATE TABLE for ${tableName}`)
 
     const result = await executeSupabaseQuery(supabase, user.id, sqlQuery)
 
     if (result.error) {
+      console.error(`Query failed for user ${user.id}:`, result.error)
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
@@ -82,7 +77,7 @@ export async function POST(request: Request) {
       result: result.data 
     })
   } catch (err: any) {
-    console.error('Error in /api/database/create-table:', err)
-    return NextResponse.json({ error: err.message || 'An unexpected error occurred.' }, { status: 500 })
+    console.error('Unhandled error in /api/database/create-table:', err)
+    return NextResponse.json({ error: `An unexpected error occurred: ${err.message}` }, { status: 500 })
   }
 }
