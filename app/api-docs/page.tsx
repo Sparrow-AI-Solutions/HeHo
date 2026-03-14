@@ -184,46 +184,6 @@ const ApiDocsPage = () => {
                 <TableCell>boolean</TableCell>
                 <TableCell>Allow chatbot to edit/update existing records in table 1 (Optional, defaults to false).</TableCell>
               </TableRow>
-              <TableRow>
-                <TableCell><code>data_table_2</code></TableCell>
-                <TableCell>string</TableCell>
-                <TableCell>Name of the second data source table (Optional, defaults to null).</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><code>data_table_2_read</code></TableCell>
-                <TableCell>boolean</TableCell>
-                <TableCell>Allow chatbot to read from table 2 (Optional, defaults to false).</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><code>data_table_2_write</code></TableCell>
-                <TableCell>boolean</TableCell>
-                <TableCell>Allow chatbot to write/insert data to table 2 (Optional, defaults to false).</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><code>data_table_2_edit</code></TableCell>
-                <TableCell>boolean</TableCell>
-                <TableCell>Allow chatbot to edit/update existing records in table 2 (Optional, defaults to false).</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><code>data_table_3</code></TableCell>
-                <TableCell>string</TableCell>
-                <TableCell>Name of the third data source table (Optional, defaults to null).</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><code>data_table_3_read</code></TableCell>
-                <TableCell>boolean</TableCell>
-                <TableCell>Allow chatbot to read from table 3 (Optional, defaults to false).</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><code>data_table_3_write</code></TableCell>
-                <TableCell>boolean</TableCell>
-                <TableCell>Allow chatbot to write/insert data to table 3 (Optional, defaults to false).</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><code>data_table_3_edit</code></TableCell>
-                <TableCell>boolean</TableCell>
-                <TableCell>Allow chatbot to edit/update existing records in table 3 (Optional, defaults to false).</TableCell>
-              </TableRow>
             </TableBody>
           </Table>
 
@@ -240,43 +200,6 @@ const ApiDocsPage = () => {
     "description": "This is a very long description that must be at least 200 characters long to satisfy the validation requirements of the HeHo platform and ensure the AI has enough context to operate effectively...", 
     "model": "qwen/qwen3-next-80b-a3b-instruct:free"
   }'`}
-              </code>
-            </pre>
-          </div>
-
-          <div className="mb-6">
-            <h4 className="font-semibold text-lg mb-2">Example: cURL (With Data Sources)</h4>
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-              <code>
-{`curl -X POST https://heho.vercel.app/api/v1/chatbots/manage \\ 
-  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
-  -H "Content-Type: application/json" \\ 
-  -d '{ 
-    "name": "Support Bot", 
-    "goal": "Customer Support", 
-    "description": "A comprehensive customer support chatbot that can access product information, handle customer queries, and manage support tickets. It is trained to provide friendly and professional assistance...", 
-    "model": "qwen/qwen3-next-80b-a3b-instruct:free",
-    "tone": "professional",
-    "theme": "ocean",
-    "data_table_1": "products",
-    "data_table_1_read": true,
-    "data_table_2": "customer_queries",
-    "data_table_2_read": true,
-    "data_table_2_write": true
-  }'`}
-              </code>
-            </pre>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-lg mb-2">Response Example</h4>
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-              <code>
-{`{
-  "message": "Chatbot created successfully!",
-  "chatbotId": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "My AI Assistant"
-}`}
               </code>
             </pre>
           </div>
@@ -298,33 +221,6 @@ const ApiDocsPage = () => {
               </code>
             </pre>
           </div>
-          <div>
-            <h4 className="font-semibold text-lg mb-2">Response Example</h4>
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-              <code>
-{`{
-  "chatbots": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Support Bot",
-      "goal": "Customer Support",
-      "model": "qwen/qwen3-next-80b-a3b-instruct:free",
-      "status": "active",
-      "created_at": "2024-03-14T10:30:00Z"
-    },
-    {
-      "id": "660e8400-e29b-41d4-a716-446655440001",
-      "name": "Sales Assistant",
-      "goal": "Sales",
-      "model": "arcee-ai/trinity-large-preview:free",
-      "status": "active",
-      "created_at": "2024-03-13T15:45:00Z"
-    }
-  ]
-}`}
-              </code>
-            </pre>
-          </div>
         </CardContent>
       </Card>
 
@@ -338,7 +234,27 @@ const ApiDocsPage = () => {
             <h4 className="font-semibold text-lg mb-2">Example: cURL (Query Parameter)</h4>
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
-{`curl -X DELETE "https://heho.vercel.app/api/v1/chatbots/manage?chatbotId=550e8400-e29b-41d4-a716-446655440000" \\ 
+{`curl -X DELETE "https://heho.vercel.app/api/v1/chatbots/manage?chatbotId=YOUR_CHATBOT_ID" \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <h2 className="text-3xl font-bold tracking-tight mb-6">Database Management</h2>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">GET</Badge> /api/v1/database/manage</CardTitle>
+          <CardDescription>Fetch all connected tables and their column structures.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X GET https://heho.vercel.app/api/v1/database/manage \\ 
   -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
               </code>
             </pre>
@@ -348,8 +264,94 @@ const ApiDocsPage = () => {
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
 {`{
-  "message": "Chatbot deleted successfully."
+  "tables": [
+    {
+      "table_name": "products",
+      "columns": [
+        { "column_name": "id", "data_type": "uuid", "required": true },
+        { "column_name": "name", "data_type": "text", "required": true },
+        { "column_name": "price", "data_type": "numeric", "required": false }
+      ]
+    }
+  ]
 }`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/v1/database/manage</CardTitle>
+          <CardDescription>Perform CRUD operations (Read, Add, Edit, Delete) on your connected tables.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Request Body (JSON)</p>
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell><code>action</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The operation to perform: <code>read</code>, <code>add</code>, <code>edit</code>, <code>delete</code> (Required).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>tableName</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The name of the table (Required).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data</code></TableCell>
+                <TableCell>object</TableCell>
+                <TableCell>The row data for <code>add</code> or <code>edit</code> actions.</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>id</code></TableCell>
+                <TableCell>any</TableCell>
+                <TableCell>The primary key value for <code>edit</code> or <code>delete</code> actions.</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>query</code></TableCell>
+                <TableCell>object</TableCell>
+                <TableCell>Filter criteria for <code>read</code> action (e.g., <code>{"{ \"id\": 1 }"}</code>).</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: Add Row</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X POST https://heho.vercel.app/api/v1/database/manage \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "action": "add", 
+    "tableName": "products", 
+    "data": { "name": "New Product", "price": 99.99 } 
+  }'`}
+              </code>
+            </pre>
+          </div>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: Read Rows</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X POST https://heho.vercel.app/api/v1/database/manage \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "action": "read", 
+    "tableName": "products"
+  }'`}
               </code>
             </pre>
           </div>
