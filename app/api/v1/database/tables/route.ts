@@ -116,15 +116,11 @@ export async function POST(req: Request) {
   }
 }
 
-// DELETE /api/v1/database/tables - Delete a table
+// DELETE /api/v1/database/tables - Disconnect a table from HeHo (only removes from app, not from Supabase)
 export async function DELETE(req: Request) {
   const user = await authenticate(req);
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
-  }
-
-  if (!user.supabase_url) {
-    return NextResponse.json({ error: 'Supabase connection not configured in settings.' }, { status: 400, headers: corsHeaders });
   }
 
   try {
@@ -140,32 +136,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Invalid table name. Use only letters, numbers, and underscores.' }, { status: 400, headers: corsHeaders });
     }
 
-    const sqlQuery = `DROP TABLE IF EXISTS public.${tableName} CASCADE;`;
-
-    console.log(`User ${user.id} executing DROP TABLE for ${tableName}`);
-
-    // Get the server-side supabase client for token management
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
-    );
-
-    const result = await executeSupabaseQuery(supabase, user.id, sqlQuery);
-
-    if (result.error) {
-      console.error(`Query failed for user ${user.id}:`, result.error);
-      return NextResponse.json({ error: result.error }, { status: result.status, headers: corsHeaders });
-    }
-
-    // Remove from user_connected_tables
+    // Only remove from user_connected_tables - does NOT delete the table from Supabase
     const supabaseAdmin = createSupabaseAdminClient();
     const { error: deleteError } = await supabaseAdmin
       .from('user_connected_tables')
@@ -175,10 +146,13 @@ export async function DELETE(req: Request) {
 
     if (deleteError) {
       console.error('Error removing table from user_connected_tables:', deleteError);
+      return NextResponse.json({ error: `Failed to disconnect table: ${deleteError.message}` }, { status: 500, headers: corsHeaders });
     }
 
+    console.log(`User ${user.id} disconnected table: ${tableName}`);
+
     return NextResponse.json({ 
-      message: 'Table deleted successfully', 
+      message: 'Table disconnected from HeHo successfully. Your table remains in Supabase.', 
       tableName: tableName 
     }, { status: 200, headers: corsHeaders });
 

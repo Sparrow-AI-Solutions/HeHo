@@ -45,40 +45,23 @@ export default function ReconnectSupabasePage() {
     const searchParams = new URLSearchParams(window.location.search)
     const code = searchParams.get("code")
 
-    if (code) {
-      handleOAuthCallback(code)
+    if (code && user?.id) {
+      handleOAuthCallback(code, user.id)
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [router, supabase])
 
-  const handleOAuthCallback = async (code: string) => {
+  const handleOAuthCallback = async (code: string, userId: string) => {
     setOauthLoading(true)
     setError(null)
     setSuccess(null)
 
     try {
-      const response = await fetch(`/api/supabase-projects?code=${code}`)
+      const response = await fetch(`/api/supabase-reconnect?code=${code}&userId=${userId}`)
       const data = await response.json()
 
-      if (data.error) {
-        setError(data.error)
-        setStep('method')
-        return
-      }
-
-      // Store the OAuth tokens and project info
-      const supabaseAdmin = createClient()
-      const { error: updateError } = await supabaseAdmin
-        .from('users')
-        .update({
-          provider_token: data.provider_token,
-          refresh_token: data.refresh_token,
-          organization_id: data.organization_id
-        })
-        .eq('id', user.id)
-
-      if (updateError) {
-        setError(`Failed to save OAuth tokens: ${updateError.message}`)
+      if (!response.ok || !data.success) {
+        setError(data.error || 'OAuth callback failed')
         setStep('method')
         return
       }
@@ -96,6 +79,11 @@ export default function ReconnectSupabasePage() {
   }
 
   const handleSupabaseOAuthConnect = () => {
+    if (!user?.id) {
+      setError('User ID not found')
+      return
+    }
+    
     setOauthLoading(true)
     const redirectUri = window.location.origin + "/app/settings/reconnect-supabase"
     const clientId = supabaseOAuthConfig.clientId

@@ -374,7 +374,7 @@ const ApiDocsPage = () => {
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">DELETE</Badge> /api/v1/database/tables</CardTitle>
-          <CardDescription>Delete a table from your Supabase database.</CardDescription>
+          <CardDescription>Disconnect a table from your HeHo app. This does NOT delete the table from your Supabase database.</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="font-semibold mb-2">Request Body (JSON)</p>
