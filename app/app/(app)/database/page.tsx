@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Plus, Loader2, Database as DatabaseIcon, Zap, CheckCircle } from 'lucide-react'
+import { Plus, Loader2, Database as DatabaseIcon, Zap, CheckCircle, Database } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 // The four default tables.
@@ -15,9 +15,6 @@ const DEFAULT_TABLES = [
   { id: 'default-customer_queries', table_name: 'customer_queries' },
   { id: 'default-sales', table_name: 'sales' },
 ];
-
-// The tables that can be edited for free.
-const EDITABLE_TABLES = ['products', 'leads', 'customer_queries', 'sales'];
 
 interface ConnectedTable {
   id: string;
@@ -80,11 +77,16 @@ export default function DatabasePage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Database</h1>
-            <p className="text-muted-foreground mt-1">View tables in your database.</p>
+            <p className="text-muted-foreground mt-1">Manage tables in your database.</p>
           </div>
-          <Button asChild className="bg-foreground hover:bg-muted text-background border border-border">
-            <Link href="/app/database/connect"><Plus className="mr-2 h-4 w-4"/> Connect a Table</Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline" className="border-border">
+              <Link href="/app/database/create"><Database className="mr-2 h-4 w-4"/> Create a Table</Link>
+            </Button>
+            <Button asChild className="bg-foreground hover:bg-muted text-background border border-border">
+              <Link href="/app/database/connect"><Plus className="mr-2 h-4 w-4"/> Connect a Table</Link>
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -95,8 +97,6 @@ export default function DatabasePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {allTables.map(table => {
-            const isEditable = EDITABLE_TABLES.includes(table.table_name);
-
             return (
               <Link key={table.id} href={`/app/database/${encodeURIComponent(table.table_name)}`} passHref>
                 <Card className="border-border/50 bg-card hover:border-foreground/30 hover:bg-card/80 transition-all cursor-pointer h-full flex flex-col">
@@ -107,18 +107,11 @@ export default function DatabasePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-grow flex flex-col justify-between">
-                    <p className="text-muted-foreground text-sm">Click to view this table's data.</p>
-                    {isEditable ? (
-                       <div className="mt-4 p-2 rounded-md bg-green-500/10 border border-green-500/50 text-green-500 text-xs flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4"/>
-                          <span>This table can be edited.</span>
-                      </div>
-                    ) : (
-                      <div className="mt-4 p-2 rounded-md bg-yellow-500/10 border border-yellow-500/50 text-yellow-500 text-xs flex items-center gap-2">
-                          <Zap className="h-4 w-4"/>
-                          <span>Editing is a premium feature. View only.</span>
-                      </div>
-                    )}
+                    <p className="text-muted-foreground text-sm">Click to view and edit this table's data.</p>
+                    <div className="mt-4 p-2 rounded-md bg-green-500/10 border border-green-500/50 text-green-500 text-xs flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4"/>
+                        <span>Full CRUD operations enabled.</span>
+                    </div>
                   </CardContent>
                 </Card>
               </Link>

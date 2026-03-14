@@ -4,18 +4,17 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
-  Loader2, Zap, Edit, ArrowLeft, PlusCircle, Trash2, Save, X
+  Loader2, Edit, PlusCircle, Trash2, Save, X, ArrowLeft
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import Link from 'next/link'
 
 interface TableData {
   columns: string[];
   data: Record<string, any>[];
 }
-
-const EDITABLE_TABLES = ['products', 'leads', 'customer_queries', 'sales'];
 
 const debounce = <F extends (...args: any[]) => void>(func: F, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -36,8 +35,6 @@ export default function TableViewPage() {
   // States for inline editing
   const [editingRowId, setEditingRowId] = useState<any>(null);
   const [editingRowData, setEditingRowData] = useState<Record<string, any> | null>(null);
-
-  const isEditable = EDITABLE_TABLES.includes(tableName);
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -141,20 +138,18 @@ export default function TableViewPage() {
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{tableName}</h1>
-            <div>
-                {isEditable ? (
-                    <Button onClick={() => setIsEditMode(!isEditMode)} variant={isEditMode ? 'secondary' : 'default'}>
-                        {isEditMode ? <><X className="h-4 w-4 mr-2"/>Exit Edit Mode</> : <><Edit className="h-4 w-4 mr-2"/>Edit Data</>}
-                    </Button>
-                ) : (
-                     <div className="p-3 rounded-md bg-yellow-900/30 border border-yellow-700/50 text-yellow-400 text-sm flex items-center gap-2">
-                        <Zap className="h-5 w-5"/>
-                        <div className="font-bold">Premium Table</div>
-                    </div>
-                )}
-            </div>
+        <div className="mb-6">
+          <Button variant="ghost" asChild className="mb-4">
+            <Link href="/app/database">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Database
+            </Link>
+          </Button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{tableName}</h1>
+              <Button onClick={() => setIsEditMode(!isEditMode)} variant={isEditMode ? 'secondary' : 'default'}>
+                  {isEditMode ? <><X className="h-4 w-4 mr-2"/>Exit Edit Mode</> : <><Edit className="h-4 w-4 mr-2"/>Edit Data</>}
+              </Button>
+          </div>
         </div>
 
         {isEditMode && (

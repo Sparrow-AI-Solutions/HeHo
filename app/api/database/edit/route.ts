@@ -3,8 +3,6 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const EDITABLE_TABLES = ['products', 'leads', 'customer_queries', 'sales'];
-
 // Helper function to get a Supabase client authenticated for the current user's database.
 async function getUserSupabaseClient() {
   const cookieStore = cookies()
@@ -51,8 +49,8 @@ async function getUserSupabaseClient() {
 export async function POST(request: Request) {
   const { tableName, action, payload } = await request.json();
 
-  if (!tableName || !EDITABLE_TABLES.includes(tableName)) {
-      return NextResponse.json({ error: 'This table is not editable or does not exist.' }, { status: 403 });
+  if (!tableName) {
+      return NextResponse.json({ error: 'Table name is required.' }, { status: 400 });
   }
 
   try {
