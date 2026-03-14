@@ -206,10 +206,10 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/50 opacity-50">
+          <Card className="border-border/50 bg-card/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" /> Supabase</CardTitle>
-              <CardDescription>Your database connection details (locked).</CardDescription>
+              <CardDescription>Your database connection details.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div>

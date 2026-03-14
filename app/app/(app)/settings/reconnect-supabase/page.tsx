@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
-import { CheckCircle, AlertCircle, Loader2, ArrowLeft } from "lucide-react"
+import { CheckCircle, AlertCircle, Loader2, ArrowLeft, ExternalLink } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
+import { supabaseOAuthConfig } from "@/lib/supabase/config"
 
 export default function ReconnectSupabasePage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [step, setStep] = useState<'method' | 'oauth' | 'manual'>('method')
   const [supabaseUrl, setSupabaseUrl] = useState("")
   const [supabaseKey, setSupabaseKey] = useState("")
   const [saving, setSaving] = useState(false)
@@ -20,6 +22,7 @@ export default function ReconnectSupabasePage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [connectionSuccess, setConnectionSuccess] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -37,7 +40,69 @@ export default function ReconnectSupabasePage() {
     }
 
     loadUser()
+
+    // Check for OAuth callback
+    const searchParams = new URLSearchParams(window.location.search)
+    const code = searchParams.get("code")
+
+    if (code) {
+      handleOAuthCallback(code)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
   }, [router, supabase])
+
+  const handleOAuthCallback = async (code: string) => {
+    setOauthLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const response = await fetch(`/api/supabase-projects?code=${code}`)
+      const data = await response.json()
+
+      if (data.error) {
+        setError(data.error)
+        setStep('method')
+        return
+      }
+
+      // Store the OAuth tokens and project info
+      const supabaseAdmin = createClient()
+      const { error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({
+          provider_token: data.provider_token,
+          refresh_token: data.refresh_token,
+          organization_id: data.organization_id
+        })
+        .eq('id', user.id)
+
+      if (updateError) {
+        setError(`Failed to save OAuth tokens: ${updateError.message}`)
+        setStep('method')
+        return
+      }
+
+      setSuccess('Supabase account connected successfully via OAuth!')
+      setTimeout(() => {
+        router.push('/app/settings')
+      }, 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'OAuth callback failed')
+      setStep('method')
+    } finally {
+      setOauthLoading(false)
+    }
+  }
+
+  const handleSupabaseOAuthConnect = () => {
+    setOauthLoading(true)
+    const redirectUri = window.location.origin + "/app/settings/reconnect-supabase"
+    const clientId = supabaseOAuthConfig.clientId
+    const scope = "read:projects read:project_api_keys organizations:read"
+    const supabaseOAuthUrl = `https://api.supabase.com/v1/oauth/authorize?client_id=${clientId}&response_type=code&scope=${scope}&redirect_uri=${redirectUri}`
+    window.location.href = supabaseOAuthUrl
+  }
 
   const testSupabaseConnection = async () => {
     if (!supabaseUrl || !supabaseKey) {
@@ -103,6 +168,17 @@ export default function ReconnectSupabasePage() {
     )
   }
 
+  if (oauthLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-foreground mx-auto mb-4" />
+          <p className="text-foreground">Connecting to Supabase...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -129,82 +205,161 @@ export default function ReconnectSupabasePage() {
           </Alert>
         )}
 
-        <Card className="border-border/50 bg-card/50">
-          <CardHeader>
-            <CardTitle>Supabase Connection Details</CardTitle>
-            <CardDescription>Enter your Supabase project URL and Anon (Public) Key.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Supabase URL</label>
-              <Input 
-                type="text" 
-                placeholder="https://[project_ref].supabase.co" 
-                value={supabaseUrl} 
-                onChange={(e) => {
-                  setSupabaseUrl(e.target.value)
-                  setConnectionSuccess(false)
-                }}
-                className="mt-2 bg-background border-border" 
-              />
-              <p className="text-xs text-muted-foreground mt-1">You can find this in your Supabase project settings.</p>
-            </div>
+        {step === 'method' && (
+          <div className="space-y-4">
+            <Card className="border-border/50 bg-card/50">
+              <CardHeader>
+                <CardTitle>Choose Connection Method</CardTitle>
+                <CardDescription>Select how you want to connect your Supabase account.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button 
+                  onClick={() => setStep('oauth')} 
+                  className="w-full bg-foreground text-background hover:bg-muted h-12 text-base"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Connect via Supabase OAuth (Recommended)
+                </Button>
+                <Button 
+                  onClick={() => setStep('manual')} 
+                  variant="outline"
+                  className="w-full border-border h-12 text-base"
+                >
+                  Enter Credentials Manually
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Supabase Anon (Public) Key</label>
-              <Input 
-                type="password" 
-                placeholder="ey..." 
-                value={supabaseKey} 
-                onChange={(e) => {
-                  setSupabaseKey(e.target.value)
-                  setConnectionSuccess(false)
-                }}
-                className="mt-2 bg-background border-border" 
-              />
-              <p className="text-xs text-muted-foreground mt-1">This is your public API key, not your service role key.</p>
-            </div>
+        {step === 'oauth' && (
+          <Card className="border-border/50 bg-card/50">
+            <CardHeader>
+              <CardTitle>Connect via Supabase OAuth</CardTitle>
+              <CardDescription>This method securely connects your Supabase account using OAuth authentication.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-4 bg-blue-500/10 border border-blue-500/50 rounded-md">
+                <p className="text-sm text-blue-300">
+                  You will be redirected to Supabase to authorize HeHo to access your projects and API keys. Your credentials are never stored on our servers.
+                </p>
+              </div>
 
-            {connectionSuccess && (
-              <Alert className="border-green-500/50 bg-green-500/10 text-green-300">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>Connection verified successfully!</AlertDescription>
-              </Alert>
-            )}
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  onClick={() => setStep('method')} 
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleSupabaseOAuthConnect} 
+                  disabled={oauthLoading}
+                  className="flex-1 bg-foreground text-background hover:bg-muted"
+                >
+                  {oauthLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Connect with Supabase
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-            <div className="flex gap-3 pt-4">
-              <Button 
-                onClick={testSupabaseConnection} 
-                disabled={!supabaseUrl || !supabaseKey || testing}
-                variant="outline"
-                className="flex-1"
-              >
-                {testing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Testing...
-                  </>
-                ) : (
-                  'Test Connection'
-                )}
-              </Button>
-              <Button 
-                onClick={handleSaveSupabaseCredentials} 
-                disabled={!connectionSuccess || saving}
-                className="flex-1 bg-foreground text-background hover:bg-muted"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Credentials'
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {step === 'manual' && (
+          <Card className="border-border/50 bg-card/50">
+            <CardHeader>
+              <CardTitle>Supabase Connection Details</CardTitle>
+              <CardDescription>Enter your Supabase project URL and Anon (Public) Key manually.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Supabase URL</label>
+                <Input 
+                  type="text" 
+                  placeholder="https://[project_ref].supabase.co" 
+                  value={supabaseUrl} 
+                  onChange={(e) => {
+                    setSupabaseUrl(e.target.value)
+                    setConnectionSuccess(false)
+                  }}
+                  className="mt-2 bg-background border-border" 
+                />
+                <p className="text-xs text-muted-foreground mt-1">You can find this in your Supabase project settings.</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Supabase Anon (Public) Key</label>
+                <Input 
+                  type="password" 
+                  placeholder="ey..." 
+                  value={supabaseKey} 
+                  onChange={(e) => {
+                    setSupabaseKey(e.target.value)
+                    setConnectionSuccess(false)
+                  }}
+                  className="mt-2 bg-background border-border" 
+                />
+                <p className="text-xs text-muted-foreground mt-1">This is your public API key, not your service role key.</p>
+              </div>
+
+              {connectionSuccess && (
+                <Alert className="border-green-500/50 bg-green-500/10 text-green-300">
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription>Connection verified successfully!</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  onClick={() => setStep('method')} 
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+                <Button 
+                  onClick={testSupabaseConnection} 
+                  disabled={!supabaseUrl || !supabaseKey || testing}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {testing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Testing...
+                    </>
+                  ) : (
+                    'Test Connection'
+                  )}
+                </Button>
+                <Button 
+                  onClick={handleSaveSupabaseCredentials} 
+                  disabled={!connectionSuccess || saving}
+                  className="flex-1 bg-foreground text-background hover:bg-muted"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Credentials'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

@@ -283,6 +283,136 @@ const ApiDocsPage = () => {
 
       <Card className="mb-8">
         <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/v1/database/tables</CardTitle>
+          <CardDescription>Create a new table in your Supabase database.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Request Body (JSON)</p>
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell><code>tableName</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The name of the table to create (Required). Must contain only letters, numbers, and underscores.</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>columns</code></TableCell>
+                <TableCell>array</TableCell>
+                <TableCell>Array of column definitions (Required). Each column should have: name, type, primaryKey (optional), notNull (optional), defaultValue (optional).</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X POST https://heho.vercel.app/api/v1/database/tables \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "tableName": "customers", 
+    "columns": [
+      { "name": "id", "type": "uuid", "primaryKey": true },
+      { "name": "name", "type": "text", "notNull": true },
+      { "name": "email", "type": "text" }
+    ]
+  }'`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/v1/database/tables/connect</CardTitle>
+          <CardDescription>Connect an existing table from your Supabase database to HeHo.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Request Body (JSON)</p>
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell><code>tableName</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The name of the existing table to connect (Required).</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X POST https://heho.vercel.app/api/v1/database/tables/connect \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "tableName": "existing_table"
+  }'`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">DELETE</Badge> /api/v1/database/tables</CardTitle>
+          <CardDescription>Delete a table from your Supabase database.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Request Body (JSON)</p>
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell><code>tableName</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The name of the table to delete (Required).</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X DELETE https://heho.vercel.app/api/v1/database/tables \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "tableName": "customers"
+  }'`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
           <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/v1/database/manage</CardTitle>
           <CardDescription>Perform CRUD operations (Read, Add, Edit, Delete) on your connected tables.</CardDescription>
         </CardHeader>

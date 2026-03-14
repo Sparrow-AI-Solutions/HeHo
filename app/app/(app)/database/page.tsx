@@ -121,33 +121,14 @@ export default function DatabasePage() {
             </Button>
           </div>
 
-          {/* Mobile dropdown menu - shown only on mobile */}
-          <div className="sm:hidden w-full">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="w-full bg-foreground hover:bg-muted text-background border border-border h-9 flex items-center justify-between px-3">
-                  <span className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Table
-                  </span>
-                  <ChevronDown className="h-4 w-4 ml-auto" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-full">
-                <DropdownMenuItem asChild>
-                  <Link href="/app/database/create" className="flex items-center gap-2 cursor-pointer">
-                    <Database className="h-4 w-4" />
-                    Create a Table
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/app/database/connect" className="flex items-center gap-2 cursor-pointer">
-                    <Plus className="h-4 w-4" />
-                    Connect a Table
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {/* Mobile buttons - shown only on mobile */}
+          <div className="sm:hidden flex flex-col gap-2 w-full">
+            <Button asChild variant="outline" className="w-full border-border h-9">
+              <Link href="/app/database/create"><Database className="mr-2 h-4 w-4"/> Create a Table</Link>
+            </Button>
+            <Button asChild className="w-full bg-foreground hover:bg-muted text-background border border-border h-9">
+              <Link href="/app/database/connect"><Plus className="mr-2 h-4 w-4"/> Connect a Table</Link>
+            </Button>
           </div>
         </div>
 
