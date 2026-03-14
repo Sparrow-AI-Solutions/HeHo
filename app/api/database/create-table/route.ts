@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     // If table created successfully, add it to user_connected_tables
     const { error: insertError } = await supabase
       .from('user_connected_tables')
-      .insert({ user_id: user.id, table_name: `public.${tableName}` })
+      .insert({ user_id: user.id, table_name: tableName })
 
     if (insertError && insertError.code !== '23505') {
       console.error('Error adding created table to user_connected_tables:', insertError)
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       message: 'Table created successfully', 
-      tableName: `public.${tableName}`,
+      tableName: tableName,
       result: result.data 
     })
   } catch (err: any) {
