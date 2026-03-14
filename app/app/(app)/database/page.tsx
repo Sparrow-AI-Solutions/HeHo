@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Plus, Loader2, Database as DatabaseIcon, Zap, CheckCircle, Database, ChevronDown } from 'lucide-react'
+import { Plus, Loader2, Database as DatabaseIcon, Zap, CheckCircle, Database, ChevronDown, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
@@ -31,6 +31,7 @@ export default function DatabasePage() {
   const [customTables, setCustomTables] = useState<ConnectedTable[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deletingTableId, setDeletingTableId] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -63,6 +64,30 @@ export default function DatabasePage() {
 
     fetchCustomTables()
   }, [supabase])
+
+  const handleRemoveTable = async (tableId: string, tableName: string) => {
+    if (!confirm(`Are you sure you want to remove the table "${tableName}" from your app? This will only remove it from your app, not from your database.`)) {
+      return;
+    }
+
+    setDeletingTableId(tableId);
+    try {
+      const { error } = await supabase
+        .from('user_connected_tables')
+        .delete()
+        .eq('id', tableId);
+
+      if (error) {
+        throw error;
+      }
+
+      setCustomTables(customTables.filter(t => t.id !== tableId));
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove table');
+    } finally {
+      setDeletingTableId(null);
+    }
+  };
 
   // Create a unique list of all tables.
   const allTablesMap = new Map();
@@ -97,18 +122,18 @@ export default function DatabasePage() {
           </div>
 
           {/* Mobile dropdown menu - shown only on mobile */}
-          <div className="sm:hidden">
+          <div className="sm:hidden w-full">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="w-full bg-foreground hover:bg-muted text-background border border-border h-9 flex items-center justify-between">
+                <Button className="w-full bg-foreground hover:bg-muted text-background border border-border h-9 flex items-center justify-between px-3">
                   <span className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
                     Add Table
                   </span>
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4 ml-auto" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-full">
                 <DropdownMenuItem asChild>
                   <Link href="/app/database/create" className="flex items-center gap-2 cursor-pointer">
                     <Database className="h-4 w-4" />
@@ -134,24 +159,49 @@ export default function DatabasePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {allTables.map(table => {
+            const isDefaultTable = DEFAULT_TABLES.some(dt => dt.table_name === table.table_name);
+            const customTable = customTables.find(ct => ct.id === table.id);
+            
             return (
-              <Link key={table.id} href={`/app/database/${encodeURIComponent(table.table_name)}`} passHref>
-                <Card className="border-border/50 bg-card hover:border-foreground/30 hover:bg-card/80 transition-all cursor-pointer h-full flex flex-col">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-foreground flex items-center gap-3 text-base sm:text-lg">
-                      <DatabaseIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground"/>
-                      <span className="truncate">{table.table_name}</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-grow flex flex-col justify-between">
-                    <p className="text-muted-foreground text-xs sm:text-sm">Click to view and edit this table's data.</p>
-                    <div className="mt-4 p-2 rounded-md bg-green-500/10 border border-green-500/50 text-green-500 text-[10px] sm:text-xs flex items-center gap-2">
-                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0"/>
-                        <span>Full CRUD operations enabled.</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <div key={table.id} className="relative">
+                <Link href={`/app/database/${encodeURIComponent(table.table_name)}`} passHref>
+                  <Card className="border-border/50 bg-card hover:border-foreground/30 hover:bg-card/80 transition-all cursor-pointer h-full flex flex-col">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-foreground flex items-center gap-3 text-base sm:text-lg">
+                        <DatabaseIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground"/>
+                        <span className="truncate">{table.table_name}</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-grow flex flex-col justify-between">
+                      <p className="text-muted-foreground text-xs sm:text-sm">Click to view and edit this table's data.</p>
+                      <div className="mt-4 p-2 rounded-md bg-green-500/10 border border-green-500/50 text-green-500 text-[10px] sm:text-xs flex items-center gap-2">
+                          <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0"/>
+                          <span>Full CRUD operations enabled.</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+                
+                {/* Remove button for custom tables only */}
+                {!isDefaultTable && customTable && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleRemoveTable(customTable.id, table.table_name);
+                    }}
+                    disabled={deletingTableId === customTable.id}
+                    className="absolute top-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 bg-background/80 backdrop-blur-sm"
+                  >
+                    {deletingTableId === customTable.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
             )
           })}
         </div>

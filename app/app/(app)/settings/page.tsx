@@ -220,6 +220,9 @@ export default function SettingsPage() {
                 <label className="text-sm font-medium text-muted-foreground">Supabase Anon Key</label>
                 <Input type="password" placeholder="ey..." value={supabaseKey} disabled className="mt-1 bg-background/50" />
               </div>
+              <Button asChild className="w-full mt-4 bg-foreground text-background hover:bg-muted">
+                <Link href="/app/settings/reconnect-supabase">Reconnect Supabase</Link>
+              </Button>
             </CardContent>
           </Card>
 
