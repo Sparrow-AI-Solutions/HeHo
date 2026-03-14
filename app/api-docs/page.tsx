@@ -43,31 +43,15 @@ const ApiDocsPage = () => {
             <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
-{`curl -X POST https://heho.vercel.app/api/verify-user \ 
+{`curl -X POST https://heho.vercel.app/api/verify-user \\ 
   -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
-              </code>
-            </pre>
-          </div>
-          <div>
-            <h4 className="font-semibold text-lg mb-2">Example: JavaScript (fetch)</h4>
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-              <code>
-{`fetch('https://heho.vercel.app/api/verify-user', { 
-  method: 'POST', 
-  headers: { 
-    'Authorization': 'Bearer YOUR_HEHO_API_KEY' 
-  } 
-}) 
-.then(response => response.json()) 
-.then(data => console.log(data)) 
-.catch(error => console.error('Error:', error));`}
               </code>
             </pre>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/aichat</CardTitle>
           <CardDescription>Send a message to one of your chatbots and receive an AI-generated reply.</CardDescription>
@@ -104,9 +88,9 @@ const ApiDocsPage = () => {
             <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
-{`curl -X POST https://heho.vercel.app/api/aichat \ 
-  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \ 
-  -H "Content-Type: application/json" \ 
+{`curl -X POST https://heho.vercel.app/api/aichat \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
   -d '{ 
     "chatbotId": "YOUR_CHATBOT_ID", 
     "messages": [{"role": "user", "content": "Hello?"}] 
@@ -114,25 +98,137 @@ const ApiDocsPage = () => {
               </code>
             </pre>
           </div>
-          <div>
-            <h4 className="font-semibold text-lg mb-2">Example: JavaScript (fetch)</h4>
+        </CardContent>
+      </Card>
+
+      <h2 className="text-3xl font-bold tracking-tight mb-6">Chatbot Management</h2>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/v1/chatbots/manage</CardTitle>
+          <CardDescription>Create a new chatbot with specific configuration and data sources.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Request Body (JSON)</p>
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell><code>name</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The name of your chatbot (Required).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>goal</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The primary goal of the chatbot (Required).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>description</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>A detailed description/prompt (Min 200 characters) (Required).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>model</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>AI model ID (Required).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>tone</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Chatbot tone: friendly, professional, or strict (Optional).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>theme</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>UI theme name (Optional).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_1</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Name of the first data source table (Optional).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_1_read</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to read from table 1 (Optional).</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
-{`fetch('https://heho.vercel.app/api/aichat', { 
-  method: 'POST', 
-  headers: { 
-    'Authorization': 'Bearer YOUR_HEHO_API_KEY', 
-    'Content-Type': 'application/json' 
-  }, 
-  body: JSON.stringify({ 
-    chatbotId: 'YOUR_CHATBOT_ID', 
-    history: [], 
-    messages: [{'role': 'user', 'content': 'Hello?'}] 
-  }) 
-}) 
-.then(res => res.json()) 
-.then(console.log) 
-.catch(console.error);`}
+{`curl -X POST https://heho.vercel.app/api/v1/chatbots/manage \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "name": "My AI Assistant", 
+    "goal": "Customer Support", 
+    "description": "This is a very long description that must be at least 200 characters long to satisfy the validation requirements of the HeHo platform and ensure the AI has enough context to operate effectively...", 
+    "model": "qwen/qwen3-next-80b-a3b-instruct:free"
+  }'`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">GET</Badge> /api/v1/chatbots/manage</CardTitle>
+          <CardDescription>Retrieve a list of all your chatbots.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X GET https://heho.vercel.app/api/v1/chatbots/manage \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
+              </code>
+            </pre>
+          </div>
+          <div>
+            <h4 className="font-semibold text-lg mb-2">Response Example</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`{
+  "chatbots": [
+    {
+      "id": "uuid-1",
+      "name": "Support Bot",
+      "goal": "Customer Support",
+      "model": "qwen/...",
+      "status": "active",
+      "created_at": "2024-03-14T..."
+    }
+  ]
+}`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">DELETE</Badge> /api/v1/chatbots/manage</CardTitle>
+          <CardDescription>Delete a specific chatbot by its ID.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X DELETE "https://heho.vercel.app/api/v1/chatbots/manage?chatbotId=YOUR_CHATBOT_ID" \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
               </code>
             </pre>
           </div>
