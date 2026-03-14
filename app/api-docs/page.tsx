@@ -137,32 +137,98 @@ const ApiDocsPage = () => {
               <TableRow>
                 <TableCell><code>model</code></TableCell>
                 <TableCell>string</TableCell>
-                <TableCell>AI model ID (Required).</TableCell>
+                <TableCell>AI model ID (Required). Examples: qwen/qwen3-next-80b-a3b-instruct:free, arcee-ai/trinity-large-preview:free</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell><code>tone</code></TableCell>
                 <TableCell>string</TableCell>
-                <TableCell>Chatbot tone: friendly, professional, or strict (Optional).</TableCell>
+                <TableCell>Chatbot tone (Optional, defaults to 'professional'). Values: friendly, professional, strict</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell><code>theme</code></TableCell>
                 <TableCell>string</TableCell>
-                <TableCell>UI theme name (Optional).</TableCell>
+                <TableCell>UI theme name (Optional, defaults to 'sky'). Values: twilight, sunrise, ocean, forest, grape, rose, sky, candy</TableCell>
               </TableRow>
+            </TableBody>
+          </Table>
+
+          <h4 className="font-semibold text-lg mb-2 mt-6">Data Source Configuration (All Optional)</h4>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Configure up to 3 data sources. If not provided, fields default to null/false.</p>
+          
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               <TableRow>
                 <TableCell><code>data_table_1</code></TableCell>
                 <TableCell>string</TableCell>
-                <TableCell>Name of the first data source table (Optional).</TableCell>
+                <TableCell>Name of the first data source table (Optional, defaults to null).</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell><code>data_table_1_read</code></TableCell>
                 <TableCell>boolean</TableCell>
-                <TableCell>Allow chatbot to read from table 1 (Optional).</TableCell>
+                <TableCell>Allow chatbot to read from table 1 (Optional, defaults to false).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_1_write</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to write/insert data to table 1 (Optional, defaults to false).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_1_edit</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to edit/update existing records in table 1 (Optional, defaults to false).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_2</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Name of the second data source table (Optional, defaults to null).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_2_read</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to read from table 2 (Optional, defaults to false).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_2_write</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to write/insert data to table 2 (Optional, defaults to false).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_2_edit</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to edit/update existing records in table 2 (Optional, defaults to false).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_3</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Name of the third data source table (Optional, defaults to null).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_3_read</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to read from table 3 (Optional, defaults to false).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_3_write</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to write/insert data to table 3 (Optional, defaults to false).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>data_table_3_edit</code></TableCell>
+                <TableCell>boolean</TableCell>
+                <TableCell>Allow chatbot to edit/update existing records in table 3 (Optional, defaults to false).</TableCell>
               </TableRow>
             </TableBody>
           </Table>
+
           <div className="mb-6">
-            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <h4 className="font-semibold text-lg mb-2">Example: cURL (Minimal)</h4>
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
 {`curl -X POST https://heho.vercel.app/api/v1/chatbots/manage \\ 
@@ -174,6 +240,43 @@ const ApiDocsPage = () => {
     "description": "This is a very long description that must be at least 200 characters long to satisfy the validation requirements of the HeHo platform and ensure the AI has enough context to operate effectively...", 
     "model": "qwen/qwen3-next-80b-a3b-instruct:free"
   }'`}
+              </code>
+            </pre>
+          </div>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL (With Data Sources)</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X POST https://heho.vercel.app/api/v1/chatbots/manage \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "name": "Support Bot", 
+    "goal": "Customer Support", 
+    "description": "A comprehensive customer support chatbot that can access product information, handle customer queries, and manage support tickets. It is trained to provide friendly and professional assistance...", 
+    "model": "qwen/qwen3-next-80b-a3b-instruct:free",
+    "tone": "professional",
+    "theme": "ocean",
+    "data_table_1": "products",
+    "data_table_1_read": true,
+    "data_table_2": "customer_queries",
+    "data_table_2_read": true,
+    "data_table_2_write": true
+  }'`}
+              </code>
+            </pre>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-lg mb-2">Response Example</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`{
+  "message": "Chatbot created successfully!",
+  "chatbotId": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "My AI Assistant"
+}`}
               </code>
             </pre>
           </div>
@@ -202,12 +305,20 @@ const ApiDocsPage = () => {
 {`{
   "chatbots": [
     {
-      "id": "uuid-1",
+      "id": "550e8400-e29b-41d4-a716-446655440000",
       "name": "Support Bot",
       "goal": "Customer Support",
-      "model": "qwen/...",
+      "model": "qwen/qwen3-next-80b-a3b-instruct:free",
       "status": "active",
-      "created_at": "2024-03-14T..."
+      "created_at": "2024-03-14T10:30:00Z"
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "name": "Sales Assistant",
+      "goal": "Sales",
+      "model": "arcee-ai/trinity-large-preview:free",
+      "status": "active",
+      "created_at": "2024-03-13T15:45:00Z"
     }
   ]
 }`}
@@ -224,11 +335,21 @@ const ApiDocsPage = () => {
         </CardHeader>
         <CardContent>
           <div className="mb-6">
-            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <h4 className="font-semibold text-lg mb-2">Example: cURL (Query Parameter)</h4>
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
-{`curl -X DELETE "https://heho.vercel.app/api/v1/chatbots/manage?chatbotId=YOUR_CHATBOT_ID" \\ 
+{`curl -X DELETE "https://heho.vercel.app/api/v1/chatbots/manage?chatbotId=550e8400-e29b-41d4-a716-446655440000" \\ 
   -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
+              </code>
+            </pre>
+          </div>
+          <div>
+            <h4 className="font-semibold text-lg mb-2">Response Example</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`{
+  "message": "Chatbot deleted successfully."
+}`}
               </code>
             </pre>
           </div>
