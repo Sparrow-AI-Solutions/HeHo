@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -254,8 +255,13 @@ export default function ChatbotPage() {
         <div className="max-w-3xl mx-auto w-full">
           {messages.length === 0 ? (
             <div className="h-[60vh] flex flex-col items-center justify-center text-center px-4">
-              <div className={`w-20 h-20 rounded-3xl mb-6 flex items-center justify-center ${selectedTheme.color} shadow-2xl transform hover:scale-105 transition-transform duration-300`}>
-                <Bot className={`h-10 w-10 ${selectedTheme.textColor}`} />
+              <div className={`w-20 h-20 rounded-3xl mb-6 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-transform duration-300 relative`}>
+                <Image
+                  src="/app-icon.png"
+                  alt="Chatbot Icon"
+                  fill
+                  className="object-contain p-2"
+                />
               </div>
               <h2 className="text-3xl font-bold text-black dark:text-white mb-3">
                 How can I help you?

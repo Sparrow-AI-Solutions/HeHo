@@ -2,6 +2,7 @@
 
 import type React from 'react'
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -234,8 +235,13 @@ export default function SharedChatbotPage() {
       <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#0b0b0b]/80 backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg ${selectedTheme.color}`}>
-              <Bot className={`h-5 w-5 sm:h-6 sm:w-6 ${selectedTheme.textColor}`} />
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg relative`}>
+              <Image
+                src="/app-icon.png"
+                alt="Chatbot Icon"
+                fill
+                className="object-contain p-1"
+              />
             </div>
             <div>
               <h1 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-none">{chatbot.name}</h1>
@@ -259,8 +265,13 @@ export default function SharedChatbotPage() {
         <div className="max-w-3xl mx-auto w-full">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
-              <div className={`w-20 h-20 rounded-3xl mb-8 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-transform duration-300 ${selectedTheme.color}`}>
-                <Bot className={`h-10 w-10 ${selectedTheme.textColor}`} />
+              <div className={`w-20 h-20 rounded-3xl mb-8 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-transform duration-300 relative`}>
+                <Image
+                  src="/app-icon.png"
+                  alt="Chatbot Icon"
+                  fill
+                  className="object-contain p-2"
+                />
               </div>
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Hello there!</h2>
               <p className="text-lg text-gray-600 dark:text-gray-400 max-w-sm">
