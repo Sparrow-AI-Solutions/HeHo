@@ -1,7 +1,7 @@
-# Bacillus (formerly HeHo) 🚀  
+# HeHo 🚀  
 **The Ultimate AI-Powered Backend & Database Orchestrator**
 
-Bacillus is a powerful, context-aware backend-as-a-service (BaaS) platform designed to bridge the gap between AI, APIs, and your data. It allows you to build sophisticated AI-driven backends that connect directly to **your own Supabase database**, enabling autonomous data management, custom API generation, and intelligent chatbot integration without writing a single line of code.
+HeHo is a powerful, context-aware platform designed to bridge the gap between AI, APIs, and your data. It allows you to build sophisticated AI-driven backends that connect directly to **your own Supabase database**, enabling autonomous data management, custom API generation, and intelligent chatbot integration without writing a single line of code.
 
 ---
 
@@ -19,14 +19,14 @@ Bacillus is a powerful, context-aware backend-as-a-service (BaaS) platform desig
 
 ### 🔐 Security & Control
 - **Fine-Grained Permissions**: You decide exactly which tables your AI can access and whether it can perform `read`, `add`, `edit`, or `delete` operations.
-- **Data Sovereignty**: Your data never leaves your Supabase project. Bacillus only acts as the intelligent orchestration layer.
+- **Data Sovereignty**: Your data never leaves your Supabase project. HeHo only acts as the intelligent orchestration layer.
 - **Encrypted Keys**: All API keys are encrypted at rest using industry-standard AES-256 encryption.
 
 ---
 
 ## 🛠️ Tech Stack
 
-Bacillus is built with a modern, high-performance stack:
+HeHo is built with a modern, high-performance stack:
 - **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) with [Shadcn UI](https://ui.shadcn.com/)
@@ -37,14 +37,14 @@ Bacillus is built with a modern, high-performance stack:
 
 ---
 
-## 🔌 Bacillus API (v1)
+## 🔌 HeHo API (v1)
 
-Bacillus provides a robust REST API for developers to integrate AI backend services and database management into their own applications.
+HeHo provides a robust REST API for developers to integrate AI backend services and database management into their own applications.
 
 ### Authentication
 All API requests require a Bearer token in the Authorization header:
 ```bash
-Authorization: Bearer YOUR_BACILLUS_API_KEY
+Authorization: Bearer YOUR_HEHO_API_KEY
 ```
 
 ### Endpoints
@@ -63,7 +63,7 @@ Authorization: Bearer YOUR_BACILLUS_API_KEY
 ## 🚀 Getting Started
 
 ### 1. Connect Your Data
-Sign up at the dashboard and connect your Supabase project via OAuth. Bacillus will handle the initial handshake and permission setup.
+Sign up at the dashboard and connect your Supabase project via OAuth. HeHo will handle the initial handshake and permission setup.
 
 ### 2. Configure AI & Logic
 Add your OpenRouter API key and upload your project documentation to define the "brain" of your backend.
@@ -74,7 +74,7 @@ Use the generated API endpoints or the built-in chatbot interface to power your 
 ---
 
 ## 📜 License
-Bacillus is 100% open-source and licensed under the **MIT License**.
+HeHo is 100% open-source and licensed under the **MIT License**.
 
 ---
 **No code. No lock-in. Your data, your AI, your Backend.**

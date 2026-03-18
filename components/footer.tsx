@@ -11,7 +11,7 @@ export function Footer() {
           <div className="col-span-1 md:col-span-2">
             <HeHoLogo className="mb-4" />
             <p className="text-muted-foreground mb-4 max-w-md">
-              Bacillus is an AI-powered backend orchestrator. Connect your database and deploy autonomous agents and APIs in minutes.
+              HeHo is an AI-powered backend orchestrator. Connect your database and deploy autonomous agents and APIs in minutes.
             </p>
           </div>
 
@@ -69,7 +69,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border pt-8 text-center text-muted-foreground text-sm">
-          <p>&copy; 2026 Bacillus. All rights reserved.</p>
+          <p>&copy; 2026 HeHo. All rights reserved.</p>
         </div>
       </div>
     </footer>

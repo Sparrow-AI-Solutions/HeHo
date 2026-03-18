@@ -11,7 +11,7 @@ export function HeHoLogo({ className = "" }: { className?: string }) {
           className="object-contain"
         />
       </div>
-      <span className="text-xl font-bold text-foreground">Bacillus</span>
+      <span className="text-xl font-bold text-foreground">HeHo</span>
     </div>
   )
 }
