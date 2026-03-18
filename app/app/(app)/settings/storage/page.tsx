@@ -140,7 +140,7 @@ export default function StorageSettingsPage() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Storage Bucket</CardTitle>
-          <CardDescription>Connect your Supabase storage bucket.</CardDescription>
+          <CardDescription>Connect or switch your Supabase storage bucket.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {connectedBucket && (
@@ -153,11 +153,11 @@ export default function StorageSettingsPage() {
           )}
           <div className="flex items-center gap-2">
             <Input 
-              placeholder="Enter a new or existing bucket name"
+              placeholder="Enter bucket name"
               value={bucketInput} 
               onChange={(e) => setBucketInput(e.target.value)} 
             />
-            <Button onClick={handleConnect} disabled={isConnecting}>
+            <Button onClick={handleConnect} disabled={isConnecting || !bucketInput}>
               {isConnecting ? <Loader2 className="animate-spin mr-2" /> : null} {connectedBucket ? 'Switch' : 'Connect'}
             </Button>
           </div>
@@ -178,13 +178,17 @@ export default function StorageSettingsPage() {
             />
             <Button onClick={handleAddColumn}><Plus className="h-4 w-4" /></Button>
           </div>
-          <div className="space-y-2">
-            {storageColumns.map((col, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                <span>{col}</span>
-                <Button onClick={() => handleRemoveColumn(col)} variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>
-              </div>
-            ))}
+          <div className="space-y-2 min-h-[40px] p-2 bg-muted rounded-md">
+            {storageColumns.length > 0 ? (
+              storageColumns.map((col, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <span>{col}</span>
+                  <Button onClick={() => handleRemoveColumn(col)} variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No columns specified.</p>
+            )}
           </div>
           <Button 
             onClick={handleSaveChanges} 
