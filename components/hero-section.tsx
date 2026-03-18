@@ -33,15 +33,15 @@ export function HeroSection() {
       <div className="relative z-20 container mx-auto">
         <div className="max-w-4xl mx-auto">
           <p className="text-sm md:text-base dark:text-gray-300 text-gray-800 mb-4 font-semibold tracking-widest uppercase">
-            Build AI Chatbots in Minutes
+            The AI-Powered Backend Orchestrator
           </p>
 
           <h1 className="text-4xl md:text-6xl font-bold dark:text-white text-black mb-6 text-balance">
-            Create AI Chatbots That Understand Your Project
+            Deploy Intelligent Backends in Minutes
           </h1>
 
           <p className="text-lg md:text-xl dark:text-gray-300 text-gray-800 mb-8 text-balance max-w-2xl mx-auto">
-            Build AI Chatbots That Understand Your Project
+            Bacillus connects AI to your database, providing autonomous data management, custom APIs, and context-aware agents.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

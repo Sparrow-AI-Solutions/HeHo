@@ -8,9 +8,9 @@ const ApiDocsPage = () => {
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
 
       <header className="mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-50">Heho API Documentation</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-50">Bacillus API Documentation</h1>
         <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
-          Welcome to the Heho API. Use your API key to integrate Heho services into your own applications.
+          Welcome to the Bacillus API. Integrate AI-powered backend services and autonomous data management into your applications.
         </p>
       </header>
 
@@ -22,7 +22,7 @@ const ApiDocsPage = () => {
         <CardContent>
           <p>Get your API key from the <a href="/settings" className="text-blue-500 hover:underline">Settings</a> page.</p>
           <pre className="mt-2 bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
-            <code>{'Authorization: Bearer YOUR_HEHO_API_KEY'}</code>
+            <code>{'Authorization: Bearer YOUR_BACILLUS_API_KEY'}</code>
           </pre>
           <div className="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-500">
             <p className="font-bold text-yellow-800 dark:text-yellow-300">Warning</p>
@@ -43,8 +43,8 @@ const ApiDocsPage = () => {
             <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
-{`curl -X POST https://heho.vercel.app/api/verify-user \\ 
-  -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
+{`curl -X POST https://bacillus.vercel.app/api/verify-user \\ 
+  -H "Authorization: Bearer YOUR_BACILLUS_API_KEY"`}
               </code>
             </pre>
           </div>
@@ -88,11 +88,11 @@ const ApiDocsPage = () => {
             <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
             <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
               <code>
-{`curl -X POST https://heho.vercel.app/api/aichat \\ 
-  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+{`curl -X POST https://bacillus.vercel.app/api/aichat \\ 
+  -H "Authorization: Bearer YOUR_BACILLUS_API_KEY" \\ 
   -H "Content-Type: application/json" \\ 
   -d '{ 
-    "chatbotId": "YOUR_CHATBOT_ID", 
+    "chatbotId": "YOUR_AGENT_ID", 
     "messages": [{"role": "user", "content": "Hello?"}] 
   }'`}
               </code>

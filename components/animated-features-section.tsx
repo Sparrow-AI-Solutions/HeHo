@@ -143,34 +143,34 @@ export function AnimatedFeaturesSection() {
       colSpan: "md:col-span-2",
     },
     {
-      title: "Supabase Integration",
-      value: "Autonomous DB",
+      title: "Supabase Orchestration",
+      value: "Autonomous Backend",
       subtitle:
-        "Connect your database and let AI read, write, and create tables autonomously.",
+        "Connect your database and let AI manage schemas, tables, and CRUD operations autonomously.",
       darkColors: ["#151515", "#252525", "#1d1d1d"],
       lightColors: [],
     },
     {
-      title: "Project Context",
-      value: "Business Logic",
+      title: "Custom API Engine",
+      value: "Instant API",
       subtitle:
-        "Upload detailed project descriptions so AI understands your full business context.",
+        "Automatically generate and deploy RESTful API endpoints that bridge your AI logic and data.",
       darkColors: ["#171717", "#272727", "#1b1b1b"],
       lightColors: [],
     },
     {
-      title: "Database Permissions",
+      title: "Backend Permissions",
       value: "Fine-grained Control",
       subtitle:
-        "Control exactly what AI can read, write, create, and access in your database.",
+        "Control exactly what your AI backend can read, write, and access in your database.",
       darkColors: ["#131313", "#232323", "#191919"],
       lightColors: [],
     },
     {
-      title: "Real-time Chat",
-      value: "Direct Chat",
+      title: "Contextual Agents",
+      value: "Smart Interfaces",
       subtitle:
-        "Chat directly with your AI chatbot powered by your OpenRouter API key.",
+        "Deploy context-aware chat agents that interact directly with your backend and data.",
       darkColors: ["#1a1a1a", "#2a2a2a", "#1f1f1f"],
       lightColors: [],
     },
@@ -191,7 +191,7 @@ export function AnimatedFeaturesSection() {
             Powerful Features
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Everything you need to build and deploy AI chatbots connected to your data
+            The complete platform for building and deploying AI-powered backends and agents
           </p>
         </div>
 

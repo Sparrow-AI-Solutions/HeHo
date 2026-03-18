@@ -5,22 +5,22 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
-  title: "HeHo - AI Chatbot Builder",
-  description: "Create AI chatbots powered by OpenRouter and Supabase. No code required.",
-  applicationName: "HeHo",
+  title: "Bacillus - AI-Powered Backend Orchestrator",
+  description: "Deploy intelligent backends, autonomous data agents, and custom APIs powered by OpenRouter and Supabase.",
+  applicationName: "Bacillus",
   authors: [{ name: "Sparrow" }],
   creator: "Sparrow",
   source: "https://github.com/trucount/HeHo",
   keywords: [
     "AI", 
-    "HeHo",
-    "Chatbot", 
-    "Builder", 
+    "Bacillus",
+    "Backend", 
+    "Orchestrator", 
     "OpenRouter", 
     "Supabase", 
     "No-code", 
-    "AI Chatbot", 
-    "Chatbot Builder",
+    "AI Backend", 
+    "Backend Builder",
     "Advanced analytics", 
     "Real-time data", 
     "One-click deployment", 
@@ -57,10 +57,10 @@ export const metadata: Metadata = {
     google: "QO1hxfpzSpt5kNRRdz3Ex_J_C9k6ThQiNPdC-HOxz8U",
   },
   openGraph: {
-    title: "HeHo - AI Chatbot Builder",
-    description: "Create AI chatbots powered by OpenRouter and Supabase. No code required.",
-    url: "https://heho.vercel.app",
-    siteName: "HeHo",
+    title: "Bacillus - AI-Powered Backend Orchestrator",
+    description: "Deploy intelligent backends, autonomous data agents, and custom APIs powered by OpenRouter and Supabase.",
+    url: "https://bacillus.vercel.app",
+    siteName: "Bacillus",
     images: [
       {
         url: 'https://heho.vercel.app/og-image.png', 
@@ -73,8 +73,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "HeHo - AI Chatbot Builder",
-    description: "Create AI chatbots powered by OpenRouter and Supabase. No code required.",
+    title: "Bacillus - AI-Powered Backend Orchestrator",
+    description: "Deploy intelligent backends, autonomous data agents, and custom APIs powered by OpenRouter and Supabase.",
     creator: '@sparrow_ps',
     images: ['https://heho.vercel.app/og-image.png'],
   },
