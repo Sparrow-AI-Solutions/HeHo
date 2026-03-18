@@ -1,7 +1,7 @@
 'use client'
 
 import { Card } from "./ui/card"
-import { Zap, Database, Mail, FileText, Lock, MessageCircle } from "lucide-react"
+import { Zap, Database, Mail, FileText, Lock, MessageCircle, Plug } from "lucide-react"
 
 const features = [
   {
@@ -15,9 +15,9 @@ const features = [
     icon: Database,
   },
   {
-    title: "Email Verification",
-    description: "Secure authentication with email verification before accessing your chatbot",
-    icon: Mail,
+    title: "Backend for Any App",
+    description: "Use HeHo as a powerful AI backend for your web, mobile, and internal applications via REST API",
+    icon: Plug,
   },
   {
     title: "Project Context",
@@ -43,7 +43,7 @@ export function FeaturesSection() {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">Powerful Features</h2>
           <p className="text-lg text-white max-w-2xl mx-auto">
-            Everything you need to build and deploy AI chatbots connected to your data
+            Everything you need to build and deploy AI chatbots and backends connected to your data
           </p>
         </div>
 

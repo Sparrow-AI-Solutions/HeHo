@@ -151,6 +151,14 @@ export function AnimatedFeaturesSection() {
       lightColors: [],
     },
     {
+      title: "Backend for Any App",
+      value: "Plug & Play",
+      subtitle:
+        "Use HeHo as a powerful AI backend for your web, mobile, and internal applications. Integrate via REST API in minutes.",
+      darkColors: ["#171717", "#272727", "#1b1b1b"],
+      lightColors: [],
+    },
+    {
       title: "REST API Engine",
       value: "Instant APIs",
       subtitle:

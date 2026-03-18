@@ -134,6 +134,10 @@ export default function SecurityPage() {
                 Found a security vulnerability? Please email <strong>security@heho.dev</strong> instead of opening a public issue. We take security seriously and will investigate all reports promptly. Please include details about the vulnerability and steps to reproduce it.
               </p>
             </div>
+
+            <div className="text-center text-sm text-muted-foreground mt-12 pt-8 border-t border-border/50">
+              <p>HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.</p>
+            </div>
           </div>
         </div>
       </main>

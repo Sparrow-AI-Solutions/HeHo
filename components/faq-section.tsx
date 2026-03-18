@@ -11,32 +11,32 @@ const faqs = [
   {
     question: "What is HeHo?",
     answer:
-      "HeHo is a no-code platform that allows you to build AI chatbots connected to your own data. You can integrate it with your Supabase database, upload project context, and deploy a chatbot that understands your business.",
+      "HeHo is an AI-powered platform for building both intelligent chatbots and autonomous backends. It allows you to connect your own data from Supabase, upload project context, and deploy AI solutions that understand your business and can act on your data.",
+  },
+  {
+    question: "Can I use HeHo as a backend for my own app?",
+    answer:
+      "Absolutely. HeHo provides a complete AI-driven backend that you can connect to any web or mobile application via our REST API. You can use it to manage data, generate custom API endpoints, and power your application's logic with autonomous AI agents.",
   },
   {
     question: "What AI models can I use?",
     answer:
-      "HeHo provides access to over 35 free AI models from OpenRouter, including popular models like Llama, Mistral, and Gemma. You can choose the model that best suits your needs and switch at any time.",
+      "HeHo provides access to over 35 AI models from OpenRouter, including Llama, Mistral, and Gemma. These models power both the conversational chatbots and the autonomous backend logic, allowing for sophisticated data reasoning and action execution.",
   },
   {
     question: "How does the Supabase integration work?",
     answer:
-      "You can connect your Supabase project to HeHo by providing your credentials. The AI can then be granted permissions to read, write, and even create tables in your database, allowing it to perform autonomous actions based on user conversations.",
+      "You can connect your Supabase project to HeHo securely. The AI can then be granted permissions to read, write, and even create tables in your database. This powers both the chatbot's memory and the backend's ability to perform autonomous data operations for your other applications.",
   },
   {
     question: "Is my data secure?",
     answer:
-      "Yes, your data is secure. We use industry-standard encryption and security practices. For Supabase integration, you have fine-grained control over the AI's database permissions, ensuring it only accesses what you allow.",
+      "Yes, your data is secure. HeHo uses industry-standard encryption and security practices. With our Supabase integration, you maintain full control over your data in your own database, with fine-grained permissions for the AI.",
   },
   {
-    question: "What happens if I exceed my plan's limits?",
+    question: "Can I customize the interface?",
     answer:
-      "Our free plan includes 10,000 messages per month. If you exceed this limit, we will notify you. You will have the option to upgrade to a paid plan to continue using the service without interruption.",
-  },
-  {
-    question: "Can I customize the chatbot's appearance?",
-    answer:
-      "Currently, we are focused on providing a powerful backend and API for your chatbots. While there are some basic customization options, advanced styling is not yet available. However, you can use our API to build your own custom chat interface.",
+      "Yes. While we provide a ready-to-use chatbot interface, our primary focus is on providing a powerful backend and API. You can use our REST API to build your own custom chat interface or integrate HeHo's AI capabilities into any existing application.",
   },
 ]
 
@@ -49,11 +49,11 @@ export function FaqSection() {
             Frequently Asked Questions
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Find answers to common questions about HeHo's AI chatbot builder.
+            Find answers to common questions about HeHo's AI chatbot and backend builder.
           </p>
         </div>
 
-        <Accordion type="single" collapsible className="w-full max-w-3xl mx-auto">
+        <Accordion type="single" collapsible className="w-full max-w-3xl mx-auto mb-12">
           {faqs.map((faq, idx) => (
             <AccordionItem key={idx} value={`item-${idx}`}>
               <AccordionTrigger className="text-left text-lg font-semibold">
@@ -65,6 +65,10 @@ export function FaqSection() {
             </AccordionItem>
           ))}
         </Accordion>
+
+        <div className="text-center text-sm text-muted-foreground mt-12 pt-8 border-t border-border/50">
+          <p>HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.</p>
+        </div>
       </div>
     </section>
   )

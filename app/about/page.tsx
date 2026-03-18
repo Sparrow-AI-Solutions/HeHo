@@ -24,7 +24,7 @@ export default function AboutPage() {
               <br /><br />
               By connecting modern language models directly to your Supabase database, HeHo enables you to create sophisticated AI agents that don't just respond to queries—they understand your data, reason about it, and take autonomous actions within your system. Whether you're building customer support chatbots, internal knowledge assistants, autonomous data management systems, or workflow automation tools, HeHo provides the foundation to deploy production-ready AI experiences with confidence and control.
               <br /><br />
-              HeHo is owned and developed by Sparrow AI Solutions, a team dedicated to democratizing AI infrastructure and removing technical barriers to AI adoption.
+              HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.
             </p>
           </div>
 
@@ -60,6 +60,13 @@ export default function AboutPage() {
               <li className="flex items-start gap-4">
                 <span className="text-primary font-bold text-xl mt-1">→</span>
                 <p className="text-lg md:text-xl text-muted-foreground">
+                  <strong>Powering Other Applications:</strong> HeHo is designed to be the brain of any application. Our API allows you to use HeHo as a robust backend for web, mobile, and internal apps, enabling them to leverage sophisticated AI reasoning and database operations.
+                </p>
+              </li>
+
+              <li className="flex items-start gap-4">
+                <span className="text-primary font-bold text-xl mt-1">→</span>
+                <p className="text-lg md:text-xl text-muted-foreground">
                   <strong>35+ Free AI Models:</strong> Powered by OpenRouter, HeHo gives you access to the latest open-source and commercial AI models—Llama, Mistral, Qwen, Arcee Trinity, and more—completely free. Switch models anytime without vendor lock-in.
                 </p>
               </li>
@@ -84,13 +91,6 @@ export default function AboutPage() {
                   <strong>Developer-Friendly REST API:</strong> Beyond the no-code interface, HeHo provides a comprehensive REST API (v1) for programmatic chatbot management, database operations, and autonomous backend control. Perfect for teams that want to integrate AI into their existing systems.
                 </p>
               </li>
-
-              <li className="flex items-start gap-4">
-                <span className="text-primary font-bold text-xl mt-1">→</span>
-                <p className="text-lg md:text-xl text-muted-foreground">
-                  <strong>Open-Source & Transparent:</strong> Built on an open-source foundation, HeHo ensures you are never locked into a single provider. You maintain full freedom to customize, extend, and evolve your AI stack.
-                </p>
-              </li>
             </ul>
           </div>
 
@@ -111,7 +111,7 @@ export default function AboutPage() {
               <Card className="p-6 border-border/50 bg-card/50">
                 <h3 className="text-xl font-bold text-foreground mb-3">Autonomous Backends</h3>
                 <p className="text-muted-foreground">
-                  AI-powered systems that autonomously manage your database, create tables, and perform CRUD operations based on natural language instructions.
+                  AI-powered systems that autonomously manage your database, create tables, and perform CRUD operations based on natural language instructions for any app.
                 </p>
               </Card>
 
@@ -180,6 +180,10 @@ export default function AboutPage() {
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
+          </div>
+
+          <div className="text-center text-sm text-muted-foreground mt-12 pt-8 border-t border-border/50">
+            <p>HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.</p>
           </div>
 
         </div>
