@@ -9,11 +9,12 @@ export async function POST(req: NextRequest) {
   const adminSupabase = createAdminClient();
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (authError || !authData?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const user = authData.user;
 
     const { bucketName } = await req.json();
 
