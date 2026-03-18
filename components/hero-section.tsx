@@ -37,11 +37,11 @@ export function HeroSection() {
           </p>
 
           <h1 className="text-4xl md:text-6xl font-bold dark:text-white text-black mb-6 text-balance">
-            Deploy Intelligent Backends in Minutes
+            Deploy AI Backends & Chatbots in Minutes
           </h1>
 
           <p className="text-lg md:text-xl dark:text-gray-300 text-gray-800 mb-8 text-balance max-w-2xl mx-auto">
-            Bacillus connects AI to your database, providing autonomous data management, custom APIs, and context-aware agents.
+            HeHo connects AI to your database, providing autonomous data management, intelligent chatbots, custom APIs, and context-aware agents—all without writing code.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

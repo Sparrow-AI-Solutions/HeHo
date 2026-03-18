@@ -137,40 +137,40 @@ export function AnimatedFeaturesSection() {
       title: "Free AI Models",
       value: "35+ Models",
       subtitle:
-        "Access to 35+ free models from OpenRouter including Llama, Mistral, Gemma, and more.",
+        "Access to 35+ free models from OpenRouter including Llama, Mistral, Qwen, Arcee Trinity, and more.",
       darkColors: ["#1a1a1a", "#2a2a2a", "#1f1f1f"],
       lightColors: [],
       colSpan: "md:col-span-2",
     },
     {
-      title: "Supabase Orchestration",
+      title: "Database Integration",
       value: "Autonomous Backend",
       subtitle:
-        "Connect your database and let AI manage schemas, tables, and CRUD operations autonomously.",
+        "Connect your Supabase database and let AI autonomously manage schemas, tables, and CRUD operations with fine-grained permissions.",
       darkColors: ["#151515", "#252525", "#1d1d1d"],
       lightColors: [],
     },
     {
-      title: "Custom API Engine",
-      value: "Instant API",
+      title: "REST API Engine",
+      value: "Instant APIs",
       subtitle:
-        "Automatically generate and deploy RESTful API endpoints that bridge your AI logic and data.",
+        "Automatically generate and deploy RESTful API endpoints for chatbot management, database operations, and autonomous backend control.",
       darkColors: ["#171717", "#272727", "#1b1b1b"],
       lightColors: [],
     },
     {
-      title: "Backend Permissions",
-      value: "Fine-grained Control",
+      title: "Granular Security",
+      value: "Complete Control",
       subtitle:
-        "Control exactly what your AI backend can read, write, and access in your database.",
+        "Define exactly what your AI backend can read, write, edit, or delete. Your data stays in your database under your control.",
       darkColors: ["#131313", "#232323", "#191919"],
       lightColors: [],
     },
     {
-      title: "Contextual Agents",
-      value: "Smart Interfaces",
+      title: "Context-Aware Agents",
+      value: "Intelligent Chatbots",
       subtitle:
-        "Deploy context-aware chat agents that interact directly with your backend and data.",
+        "Deploy sophisticated chat agents that interact directly with your backend, database, and business logic in real-time.",
       darkColors: ["#1a1a1a", "#2a2a2a", "#1f1f1f"],
       lightColors: [],
     },

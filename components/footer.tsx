@@ -11,7 +11,7 @@ export function Footer() {
           <div className="col-span-1 md:col-span-2">
             <HeHoLogo className="mb-4" />
             <p className="text-muted-foreground mb-4 max-w-md">
-              HeHo is an AI-powered backend orchestrator. Connect your database and deploy autonomous agents and APIs in minutes.
+              HeHo is an AI-powered platform for building intelligent chatbots, autonomous backends, and custom APIs. Connect your database and deploy in minutes.
             </p>
           </div>
 
