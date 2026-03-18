@@ -12,7 +12,7 @@ const pricingPlans = [
     description: "Perfect for getting started with AI chatbots",
     features: [
       "Up to 50 chatbots",
-      "100 messages/day",
+      "1000 messages/day",
       "35+ free OpenRouter models",
       "Supabase database integration",
       "REST API access",
