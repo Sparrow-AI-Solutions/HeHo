@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       .from("users")
       .update(updatePayload)
       .eq("id", user.id)
-      .select()
+      .select('storage_bucket, storage_columns')
       .single();
 
     if (updateError) {

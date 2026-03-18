@@ -9,16 +9,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Trash2, Loader2, CheckCircle, XCircle } from "lucide-react"
 
 export default function StorageSettingsPage() {
-  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [bucketName, setBucketName] = useState("")
+  
+  const [connectedBucket, setConnectedBucket] = useState("")
+  const [bucketInput, setBucketInput] = useState("")
+  
   const [storageColumns, setStorageColumns] = useState<string[]>([])
   const [newColumnName, setNewColumnName] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isSavingColumns, setIsSavingColumns] = useState(false)
+
+  // --- DEBUGGING STATE ---
+  const [debugData, setDebugData] = useState<any>(null);
 
   const supabase = createClient()
 
@@ -27,7 +32,6 @@ export default function StorageSettingsPage() {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        setUser(user)
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('storage_bucket, storage_columns')
@@ -37,7 +41,7 @@ export default function StorageSettingsPage() {
         if (userError) {
           setError("Failed to load user data.")
         } else if (userData) {
-          setBucketName(userData.storage_bucket || "")
+          setConnectedBucket(userData.storage_bucket || "")
           setStorageColumns(userData.storage_columns || [])
         }
       }
@@ -47,24 +51,29 @@ export default function StorageSettingsPage() {
   }, [supabase])
 
   const handleConnect = async () => {
-    if (!bucketName) {
+    if (!bucketInput) {
       setError("Please enter a bucket name.")
       return
     }
     setIsConnecting(true)
     setError(null)
     setSuccess(null)
+    setDebugData(null);
+
     const response = await fetch('/api/database/connect-storage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bucketName }),
+      body: JSON.stringify({ bucketName: bucketInput }),
     })
     const data = await response.json()
+    setDebugData(data); // Display the full API response
+
     if (response.ok) {
       setSuccess(data.message)
       if (data.data) {
-        setBucketName(data.data.storage_bucket || "")
+        setConnectedBucket(data.data.storage_bucket || "")
         setStorageColumns(data.data.storage_columns || [])
+        setBucketInput("")
       }
     } else {
       setError(data.error)
@@ -76,12 +85,15 @@ export default function StorageSettingsPage() {
     setIsDisconnecting(true)
     setError(null)
     setSuccess(null)
+    setDebugData(null);
     const response = await fetch('/api/database/connect-storage', {
       method: 'DELETE',
     })
     const data = await response.json()
+    setDebugData(data);
+
     if (response.ok) {
-      setBucketName("")
+      setConnectedBucket("")
       setStorageColumns([])
       setSuccess(data.message)
     } else {
@@ -105,12 +117,15 @@ export default function StorageSettingsPage() {
     setIsSavingColumns(true);
     setError(null);
     setSuccess(null);
+    setDebugData(null);
     const response = await fetch("/api/database/connect-storage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bucketName, storageColumns }),
+      body: JSON.stringify({ bucketName: connectedBucket, storageColumns }),
     });
     const data = await response.json();
+    setDebugData(data);
+
     if (response.ok) {
       setSuccess(data.message);
       if (data.data) {
@@ -135,12 +150,12 @@ export default function StorageSettingsPage() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Storage Bucket</CardTitle>
-          <CardDescription>Connect your Supabase Storage bucket.</CardDescription>
+          <CardDescription>Connect your Supabase storage bucket.</CardDescription>
         </CardHeader>
         <CardContent>
-          {bucketName ? (
+          {connectedBucket ? (
             <div className="flex items-center justify-between">
-              <p>Connected to bucket: <strong>{bucketName}</strong></p>
+              <p>Connected to bucket: <strong>{connectedBucket}</strong></p>
               <Button onClick={handleDisconnect} variant="destructive" disabled={isDisconnecting}>
                 {isDisconnecting ? <Loader2 className="animate-spin mr-2" /> : null} Disconnect
               </Button>
@@ -149,8 +164,8 @@ export default function StorageSettingsPage() {
             <div className="flex items-center gap-2">
               <Input 
                 placeholder="Enter bucket name" 
-                value={bucketName} 
-                onChange={(e) => setBucketName(e.target.value)} 
+                value={bucketInput} 
+                onChange={(e) => setBucketInput(e.target.value)} 
               />
               <Button onClick={handleConnect} disabled={isConnecting}>
                 {isConnecting ? <Loader2 className="animate-spin mr-2" /> : null} Connect
@@ -160,7 +175,7 @@ export default function StorageSettingsPage() {
         </CardContent>
       </Card>
 
-      {bucketName && (
+      {connectedBucket && (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Storage Columns</CardTitle>
@@ -186,6 +201,19 @@ export default function StorageSettingsPage() {
             <Button onClick={handleSaveChanges} className="mt-4" disabled={isSavingColumns}>
               {isSavingColumns ? <Loader2 className="animate-spin mr-2" /> : null} Save Changes
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {debugData && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>API Response (Debug)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md overflow-x-auto">
+              {JSON.stringify(debugData, null, 2)}
+            </pre>
           </CardContent>
         </Card>
       )}
