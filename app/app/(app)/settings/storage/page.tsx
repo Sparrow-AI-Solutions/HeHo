@@ -59,7 +59,7 @@ export default function StorageSettingsPage() {
     const response = await fetch('/api/database/connect-storage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bucketName: bucketInput }),
+      body: JSON.stringify({ bucketName: bucketInput, storageColumns }),
     })
     const data = await response.json()
 
@@ -87,7 +87,7 @@ export default function StorageSettingsPage() {
 
     if (response.ok) {
       setConnectedBucket("")
-      setStorageColumns([])
+      // We keep the storageColumns in the state even after disconnecting
       setSuccess(data.message)
     } else {
       setError(data.error)
@@ -166,35 +166,37 @@ export default function StorageSettingsPage() {
         </CardContent>
       </Card>
 
-      {connectedBucket && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Storage Columns</CardTitle>
-            <CardDescription>Specify the columns from your storage that the chat can use.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 mb-4">
-              <Input 
-                placeholder="Add column name" 
-                value={newColumnName} 
-                onChange={(e) => setNewColumnName(e.target.value)} 
-              />
-              <Button onClick={handleAddColumn}><Plus className="h-4 w-4" /></Button>
-            </div>
-            <div className="space-y-2">
-              {storageColumns.map((col, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                  <span>{col}</span>
-                  <Button onClick={() => handleRemoveColumn(col)} variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>
-                </div>
-              ))}
-            </div>
-            <Button onClick={handleSaveChanges} className="mt-4" disabled={isSavingColumns}>
-              {isSavingColumns ? <Loader2 className="animate-spin mr-2" /> : null} Save Changes
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Storage Columns</CardTitle>
+          <CardDescription>Specify the columns from your storage that the chat can use.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 mb-4">
+            <Input 
+              placeholder="Add column name" 
+              value={newColumnName} 
+              onChange={(e) => setNewColumnName(e.target.value)} 
+            />
+            <Button onClick={handleAddColumn}><Plus className="h-4 w-4" /></Button>
+          </div>
+          <div className="space-y-2">
+            {storageColumns.map((col, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                <span>{col}</span>
+                <Button onClick={() => handleRemoveColumn(col)} variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>
+              </div>
+            ))}
+          </div>
+          <Button 
+            onClick={handleSaveChanges} 
+            className="mt-4" 
+            disabled={isSavingColumns || !connectedBucket}
+          >
+            {isSavingColumns ? <Loader2 className="animate-spin mr-2" /> : null} Save Changes
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }
