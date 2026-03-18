@@ -53,10 +53,56 @@ Authorization: Bearer YOUR_HEHO_API_KEY
 - **`POST /api/aichat`**: Send a message to an AI agent and receive an intelligent, data-grounded reply.
 - **`POST /api/verify-user`**: Verifies your API key and returns the complete user profile.
 
-#### 2. Backend & Database Management
-- **`GET /api/v1/chatbots/manage`**: List all active AI agents and connected database structures.
-- **`POST /api/v1/chatbots/manage`**: Create and deploy a new AI-driven backend agent.
-- **`DELETE /api/v1/chatbots/manage`**: Remove an existing agent or backend configuration.
+#### 2. Chatbot Management API
+- **`GET /api/v1/chatbots/manage`**: Retrieve a list of all your chatbots.
+- **`POST /api/v1/chatbots/manage`**: Create and deploy a new AI-driven chatbot with specific configuration and data sources.
+- **`DELETE /api/v1/chatbots/manage`**: Remove an existing chatbot configuration.
+
+#### 3. Database Management API
+HeHo provides a powerful API for autonomous database management, allowing AI agents to interact directly with your Supabase data.
+
+- **`GET /api/v1/database/manage`**: Fetch all connected tables and their detailed column structures.
+  - Example Response:
+    ```json
+    {
+      "tables": [
+        {
+          "table_name": "products",
+          "columns": [
+            { "column_name": "id", "data_type": "uuid", "required": true },
+            { "column_name": "name", "data_type": "text", "required": true },
+            { "column_name": "price", "data_type": "numeric", "required": false }
+          ]
+        }
+      ]
+    }
+    ```
+
+- **`POST /api/v1/database/tables`**: Create a new table in your Supabase database.
+  - Payload: `{ "tableName": "customers", "columns": [{ "name": "id", "type": "uuid", "primaryKey": true }, { "name": "name", "type": "text", "notNull": true }] }`
+
+- **`POST /api/v1/database/tables/connect`**: Connect an existing table from your Supabase database to HeHo.
+  - Payload: `{ "tableName": "existing_table" }`
+
+- **`DELETE /api/v1/database/tables`**: Disconnect a table from your HeHo app. (Does NOT delete the table from Supabase).
+  - Payload: `{ "tableName": "customers" }`
+
+- **`POST /api/v1/database/manage`**: Perform CRUD operations (Read, Add, Edit, Delete) on your connected tables.
+  - Payload:
+    ```json
+    {
+      "action": "add",
+      "tableName": "products",
+      "data": { "name": "New Product", "price": 99.99 }
+    }
+    ```
+    ```json
+    {
+      "action": "read",
+      "tableName": "products",
+      "query": { "id": 1 }
+    }
+    ```
 
 ---
 
