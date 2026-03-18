@@ -69,8 +69,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border pt-8 text-center text-muted-foreground text-sm">
-          <p className="mb-2">HeHo is defined and owned by Sparrow AI Solutions.</p>
-          <p>&copy; 2026 HeHo. All rights reserved.</p>
+          <p>HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.</p>
         </div>
       </div>
     </footer>

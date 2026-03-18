@@ -124,6 +124,3 @@ HeHo is 100% open-source and licensed under the **MIT License**.
 
 ---
 **No code. No lock-in. Your data, your AI, your Backend.**
-
----
-HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.

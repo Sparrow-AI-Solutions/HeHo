@@ -24,7 +24,6 @@ export default function AboutPage() {
               <br /><br />
               By connecting modern language models directly to your Supabase database, HeHo enables you to create sophisticated AI agents that don't just respond to queries—they understand your data, reason about it, and take autonomous actions within your system. Whether you're building customer support chatbots, internal knowledge assistants, autonomous data management systems, or workflow automation tools, HeHo provides the foundation to deploy production-ready AI experiences with confidence and control.
               <br /><br />
-              HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.
             </p>
           </div>
 
@@ -180,10 +179,6 @@ export default function AboutPage() {
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-          </div>
-
-          <div className="text-center text-sm text-muted-foreground mt-12 pt-8 border-t border-border/50">
-            <p>HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.</p>
           </div>
 
         </div>

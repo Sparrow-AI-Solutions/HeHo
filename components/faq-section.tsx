@@ -66,9 +66,6 @@ export function FaqSection() {
           ))}
         </Accordion>
 
-        <div className="text-center text-sm text-muted-foreground mt-12 pt-8 border-t border-border/50">
-          <p>HeHo is defined and owned by Sparrow AI Solutions 2026 HeHo. All rights reserved.</p>
-        </div>
       </div>
     </section>
   )
