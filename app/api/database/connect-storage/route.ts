@@ -2,19 +2,19 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createUserSupabaseClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   try {
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient();
-    const { data: authData, error: authError } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (authError || !authData?.user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const user = authData.user;
 
     const { bucketName } = await req.json();
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create a new Supabase client with the user's credentials
-    const userSupabase = createAdminClient(userData.supabase_url, userData.supabase_key_encrypted);
+    const userSupabase = createUserSupabaseClient(userData.supabase_url!, userData.supabase_key_encrypted!);
 
     // Check if the bucket exists
     const { data: bucketData, error: bucketError } = await userSupabase.storage.getBucket(bucketName);
