@@ -62,6 +62,10 @@ export default function StorageSettingsPage() {
     const data = await response.json()
     if (response.ok) {
       setSuccess(data.message)
+      if (data.data) {
+        setBucketName(data.data.storage_bucket || "")
+        setStorageColumns(data.data.storage_columns || [])
+      }
     } else {
       setError(data.error)
     }
@@ -109,6 +113,9 @@ export default function StorageSettingsPage() {
     const data = await response.json();
     if (response.ok) {
       setSuccess(data.message);
+      if (data.data) {
+        setStorageColumns(data.data.storage_columns || []);
+      }
     } else {
       setError(data.error);
     }
@@ -164,7 +171,7 @@ export default function StorageSettingsPage() {
               <Input 
                 placeholder="Add column name" 
                 value={newColumnName} 
-                onChange={(e) => setNewColumnName(e.targe.value)} 
+                onChange={(e) => setNewColumnName(e.target.value)} 
               />
               <Button onClick={handleAddColumn}><Plus className="h-4 w-4" /></Button>
             </div>
