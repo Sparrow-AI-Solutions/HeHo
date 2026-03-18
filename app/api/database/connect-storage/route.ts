@@ -5,10 +5,10 @@ import { createClient as createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
-  const adminSupabase = createAdminClient();
 
   try {
+    const supabase = await createClient();
+    const adminSupabase = createAdminClient();
     const { data: authData, error: authError } = await supabase.auth.getUser();
 
     if (authError || !authData?.user) {
