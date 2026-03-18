@@ -87,7 +87,6 @@ export default function StorageSettingsPage() {
 
     if (response.ok) {
       setConnectedBucket("")
-      // We keep the storageColumns in the state even after disconnecting
       setSuccess(data.message)
     } else {
       setError(data.error)
@@ -143,26 +142,25 @@ export default function StorageSettingsPage() {
           <CardTitle>Storage Bucket</CardTitle>
           <CardDescription>Connect your Supabase storage bucket.</CardDescription>
         </CardHeader>
-        <CardContent>
-          {connectedBucket ? (
+        <CardContent className="space-y-4">
+          {connectedBucket && (
             <div className="flex items-center justify-between">
               <p>Connected to bucket: <strong>{connectedBucket}</strong></p>
               <Button onClick={handleDisconnect} variant="destructive" disabled={isDisconnecting}>
                 {isDisconnecting ? <Loader2 className="animate-spin mr-2" /> : null} Disconnect
               </Button>
             </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Input 
-                placeholder="Enter bucket name" 
-                value={bucketInput} 
-                onChange={(e) => setBucketInput(e.target.value)} 
-              />
-              <Button onClick={handleConnect} disabled={isConnecting}>
-                {isConnecting ? <Loader2 className="animate-spin mr-2" /> : null} Connect
-              </Button>
-            </div>
           )}
+          <div className="flex items-center gap-2">
+            <Input 
+              placeholder="Enter a new or existing bucket name"
+              value={bucketInput} 
+              onChange={(e) => setBucketInput(e.target.value)} 
+            />
+            <Button onClick={handleConnect} disabled={isConnecting}>
+              {isConnecting ? <Loader2 className="animate-spin mr-2" /> : null} {connectedBucket ? 'Switch' : 'Connect'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
