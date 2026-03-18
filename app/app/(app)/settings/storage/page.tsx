@@ -22,9 +22,6 @@ export default function StorageSettingsPage() {
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [isSavingColumns, setIsSavingColumns] = useState(false)
 
-  // --- DEBUGGING STATE ---
-  const [debugData, setDebugData] = useState<any>(null);
-
   const supabase = createClient()
 
   useEffect(() => {
@@ -58,7 +55,6 @@ export default function StorageSettingsPage() {
     setIsConnecting(true)
     setError(null)
     setSuccess(null)
-    setDebugData(null);
 
     const response = await fetch('/api/database/connect-storage', {
       method: 'POST',
@@ -66,7 +62,6 @@ export default function StorageSettingsPage() {
       body: JSON.stringify({ bucketName: bucketInput }),
     })
     const data = await response.json()
-    setDebugData(data); // Display the full API response
 
     if (response.ok) {
       setSuccess(data.message)
@@ -85,12 +80,10 @@ export default function StorageSettingsPage() {
     setIsDisconnecting(true)
     setError(null)
     setSuccess(null)
-    setDebugData(null);
     const response = await fetch('/api/database/connect-storage', {
       method: 'DELETE',
     })
     const data = await response.json()
-    setDebugData(data);
 
     if (response.ok) {
       setConnectedBucket("")
@@ -117,14 +110,12 @@ export default function StorageSettingsPage() {
     setIsSavingColumns(true);
     setError(null);
     setSuccess(null);
-    setDebugData(null);
     const response = await fetch("/api/database/connect-storage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bucketName: connectedBucket, storageColumns }),
     });
     const data = await response.json();
-    setDebugData(data);
 
     if (response.ok) {
       setSuccess(data.message);
@@ -201,19 +192,6 @@ export default function StorageSettingsPage() {
             <Button onClick={handleSaveChanges} className="mt-4" disabled={isSavingColumns}>
               {isSavingColumns ? <Loader2 className="animate-spin mr-2" /> : null} Save Changes
             </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {debugData && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>API Response (Debug)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md overflow-x-auto">
-              {JSON.stringify(debugData, null, 2)}
-            </pre>
           </CardContent>
         </Card>
       )}

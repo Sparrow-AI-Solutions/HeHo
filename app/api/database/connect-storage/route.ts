@@ -55,16 +55,27 @@ export async function POST(req: NextRequest) {
         updatePayload.storage_columns = storageColumns;
     }
 
-    const { data: updatedUser, error: updateError } = await adminSupabase
+    // First, update the user record
+    const { error: updateError } = await adminSupabase
       .from("users")
       .update(updatePayload)
-      .eq("id", user.id)
-      .select('storage_bucket, storage_columns')
-      .single();
+      .eq("id", user.id);
 
     if (updateError) {
       console.error("Error updating user storage settings:", updateError);
       return NextResponse.json({ error: `Failed to save storage settings: ${updateError.message}` }, { status: 500 });
+    }
+
+    // Then, fetch the updated record to ensure we return the latest data
+    const { data: updatedUser, error: selectError } = await adminSupabase
+        .from('users')
+        .select('storage_bucket, storage_columns')
+        .eq('id', user.id)
+        .single();
+
+    if (selectError) {
+        console.error("Error selecting user data after update:", selectError);
+        return NextResponse.json({ error: `Failed to retrieve updated settings: ${selectError.message}` }, { status: 500 });
     }
 
     const message = storageColumns 
@@ -91,16 +102,27 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { data: updatedUser, error: updateError } = await adminSupabase
+        // First, update the record
+        const { error: updateError } = await adminSupabase
             .from("users")
             .update({ storage_bucket: null, storage_columns: null })
             .eq("id", user.id)
-            .select()
-            .single();
 
         if (updateError) {
             console.error("Error disconnecting storage bucket:", updateError);
             return NextResponse.json({ error: `Failed to disconnect storage: ${updateError.message}` }, { status: 500 });
+        }
+
+        // Then, fetch the updated record
+        const { data: updatedUser, error: selectError } = await adminSupabase
+            .from("users")
+            .select('storage_bucket, storage_columns')
+            .eq("id", user.id)
+            .single();
+        
+        if (selectError) {
+            console.error("Error selecting user data after disconnect:", selectError);
+            return NextResponse.json({ error: `Failed to retrieve updated settings: ${selectError.message}` }, { status: 500 });
         }
 
         return NextResponse.json({ message: "Storage bucket disconnected successfully", data: updatedUser });
