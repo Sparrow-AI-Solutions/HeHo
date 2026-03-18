@@ -16,13 +16,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { bucketName } = await req.json();
+    const { bucketName, storageColumns } = await req.json();
 
     if (!bucketName) {
       return NextResponse.json({ error: "Bucket name is required" }, { status: 400 });
     }
 
-    // Get user's Supabase credentials from the database
+    if (storageColumns && (!Array.isArray(storageColumns) || storageColumns.some(col => typeof col !== 'string'))) {
+        return NextResponse.json({ error: "storageColumns must be an array of strings." }, { status: 400 });
+    }
+
     const { data: userData, error: userError } = await adminSupabase
       .from("users")
       .select("supabase_url, supabase_key_encrypted")
@@ -33,29 +36,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not retrieve user credentials" }, { status: 500 });
     }
 
-    // Create a new Supabase client with the user's credentials
     const userSupabase = createUserSupabaseClient(userData.supabase_url!, userData.supabase_key_encrypted!);
 
-    // Check if the bucket exists by attempting to list from it.
     const { error: listError } = await userSupabase.storage.from(bucketName).list(undefined, { limit: 0 });
 
     if (listError && listError.message.includes("Bucket not found")) {
         return NextResponse.json({ error: `Bucket '${bucketName}' does not exist or you don\'t have permission to access it.` }, { status: 404 });
     }
 
-    // If the bucket exists, save it to the users table
-    const { error: updateError } = await adminSupabase
-      .from("users")
-      .update({ storage_bucket: bucketName })
-      .eq("id", user.id);
+    const updatePayload: {
+        storage_bucket: string;
+        storage_columns?: string[];
+    } = {
+        storage_bucket: bucketName
+    };
 
-    if (updateError) {
-      return NextResponse.json({ error: "Failed to save bucket name to user profile" }, { status: 500 });
+    if (storageColumns) {
+        updatePayload.storage_columns = storageColumns;
     }
 
-    return NextResponse.json({ message: "Storage bucket connected successfully" });
+    const { data: updatedUser, error: updateError } = await adminSupabase
+      .from("users")
+      .update(updatePayload)
+      .eq("id", user.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Error updating user storage settings:", updateError);
+      return NextResponse.json({ error: `Failed to save storage settings: ${updateError.message}` }, { status: 500 });
+    }
+
+    const message = storageColumns 
+        ? "Storage bucket and columns connected successfully" 
+        : "Storage bucket connected successfully";
+
+    return NextResponse.json({ message, data: updatedUser });
 
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "An unknown error occurred" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    console.error("Unexpected error in /api/database/connect-storage:", errorMessage);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
