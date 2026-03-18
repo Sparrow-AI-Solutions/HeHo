@@ -36,11 +36,11 @@ export async function POST(req: NextRequest) {
     // Create a new Supabase client with the user's credentials
     const userSupabase = createUserSupabaseClient(userData.supabase_url!, userData.supabase_key_encrypted!);
 
-    // Check if the bucket exists
-    const { data: bucketData, error: bucketError } = await userSupabase.storage.getBucket(bucketName);
+    // Check if the bucket exists by attempting to list from it.
+    const { error: listError } = await userSupabase.storage.from(bucketName).list(undefined, { limit: 0 });
 
-    if (bucketError) {
-      return NextResponse.json({ error: `Bucket '${bucketName}' does not exist or you don\'t have permission to access it.` }, { status: 404 });
+    if (listError && listError.message.includes("Bucket not found")) {
+        return NextResponse.json({ error: `Bucket '${bucketName}' does not exist or you don\'t have permission to access it.` }, { status: 404 });
     }
 
     // If the bucket exists, save it to the users table
