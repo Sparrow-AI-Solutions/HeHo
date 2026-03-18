@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [openRouterKey, setOpenRouterKey] = useState("")
   const [supabaseUrl, setSupabaseUrl] = useState("")
   const [supabaseKey, setSupabaseKey] = useState("")
+  const [storageBucket, setStorageBucket] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -45,6 +46,7 @@ export default function SettingsPage() {
         setSupabaseUrl(data.supabase_url || "")
         setSupabaseKey(data.supabase_key_encrypted || "")
         setHehoApiKey(data.heho_api_key || "")
+        setStorageBucket(data.storage_bucket || "")
       }
       setLoading(false)
     }
@@ -118,6 +120,29 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  const handleConnectBucket = async () => {
+    if (!user) return;
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch("/api/database/connect-storage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bucketName: storageBucket }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error);
+      }
+      setSuccess("Storage bucket connected successfully!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect storage bucket");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -223,6 +248,22 @@ export default function SettingsPage() {
               <Button asChild className="w-full mt-4 bg-foreground text-background hover:bg-muted">
                 <Link href="/app/settings/reconnect-supabase">Reconnect Supabase</Link>
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" /> Storage Bucket</CardTitle>
+              <CardDescription>Connect your Supabase storage bucket.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Bucket Name</label>
+                <Input type="text" placeholder="your-bucket-name" value={storageBucket} onChange={(e) => setStorageBucket(e.target.value)} className="mt-1 bg-background/50" />
+                 <Button onClick={handleConnectBucket} disabled={saving} size="sm" className="mt-2">
+                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Connecting...</> : "Connect"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
