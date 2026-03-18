@@ -79,3 +79,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+    const supabase = await createClient();
+    const adminSupabase = createAdminClient();
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { data: updatedUser, error: updateError } = await adminSupabase
+            .from("users")
+            .update({ storage_bucket: null, storage_columns: null })
+            .eq("id", user.id)
+            .select()
+            .single();
+
+        if (updateError) {
+            console.error("Error disconnecting storage bucket:", updateError);
+            return NextResponse.json({ error: `Failed to disconnect storage: ${updateError.message}` }, { status: 500 });
+        }
+
+        return NextResponse.json({ message: "Storage bucket disconnected successfully", data: updatedUser });
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+        console.error("Unexpected error in DELETE /api/database/connect-storage:", errorMessage);
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
+    }
+}
