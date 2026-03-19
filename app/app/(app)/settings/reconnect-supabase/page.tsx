@@ -14,15 +14,23 @@ import { supabaseOAuthConfig } from "@/lib/supabase/config"
 export default function ReconnectSupabasePage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  // Supabase connection states
   const [step, setStep] = useState<'method' | 'oauth' | 'manual'>('method')
   const [supabaseUrl, setSupabaseUrl] = useState("")
   const [supabaseKey, setSupabaseKey] = useState("")
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   const [connectionSuccess, setConnectionSuccess] = useState(false)
   const [oauthLoading, setOauthLoading] = useState(false)
+
+  // Pantry states
+  const [pantryId, setPantryId] = useState("")
+  const [pantryInput, setPantryInput] = useState("")
+  const [isConnectingPantry, setIsConnectingPantry] = useState(false)
+  const [isDisconnectingPantry, setIsDisconnectingPantry] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -36,29 +44,37 @@ export default function ReconnectSupabasePage() {
         return
       }
       setUser(currentUser)
+
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('pantry_id')
+        .eq('id', currentUser.id)
+        .single()
+      
+      if(userData) {
+        setPantryId(userData.pantry_id || "")
+      }
+
       setLoading(false)
     }
 
     loadUser()
   }, [router, supabase])
 
+  const clearMessages = () => {
+      setError(null)
+      setSuccess(null)
+  }
+
+  // --- Supabase Handlers ---
   const handleSupabaseOAuthConnect = () => {
     if (!user?.id) {
       setError('User ID not found')
       return
     }
-    
     setOauthLoading(true)
-    
-    // Save state to localStorage so setup page knows this is a reconnect
-    const stateToSave = { 
-      step: 2, 
-      isReconnect: true,
-      userId: user.id
-    };
+    const stateToSave = { step: 2, isReconnect: true, userId: user.id };
     localStorage.setItem('setupState', JSON.stringify(stateToSave));
-
-    // Use the SAME redirect_uri as the setup flow
     const redirectUri = window.location.origin + "/app/setup";
     const clientId = supabaseOAuthConfig.clientId
     const scope = "read:projects read:project_api_keys organizations:read"
@@ -72,8 +88,7 @@ export default function ReconnectSupabasePage() {
       return
     }
     setTesting(true)
-    setError(null)
-    setSuccess(null)
+    clearMessages()
     try {
       const testSupabase = createClient(supabaseUrl, supabaseKey)
       const { error: testError } = await testSupabase.from('users').select('id').limit(1)
@@ -98,8 +113,7 @@ export default function ReconnectSupabasePage() {
     }
 
     setSaving(true)
-    setError(null)
-    setSuccess(null)
+    clearMessages()
     try {
       const { error } = await supabase
         .from("users")
@@ -122,23 +136,53 @@ export default function ReconnectSupabasePage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-foreground" />
-      </div>
-    )
+  // --- Pantry Handlers ---
+  const handleConnectPantry = async () => {
+      if (!pantryInput) {
+          setError("Please enter a Pantry ID.")
+          return
+      }
+      setIsConnectingPantry(true)
+      clearMessages()
+      try {
+        const response = await fetch('/api/pantry/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pantryId: pantryInput })
+        })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error)
+        setSuccess(data.message)
+        if (data.data) {
+            setPantryId(data.data.pantry_id || "")
+            setPantryInput("")
+        }
+      } catch (err: any) {
+        setError(err.message)
+      }
+      setIsConnectingPantry(false)
   }
 
+  const handleDisconnectPantry = async () => {
+      setIsDisconnectingPantry(true)
+      clearMessages()
+      try {
+        const response = await fetch('/api/pantry/connect', { method: 'DELETE' })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error)
+        setSuccess(data.message)
+        setPantryId("")
+      } catch (err: any) {
+        setError(err.message)
+      }
+      setIsDisconnectingPantry(false)
+  }
+
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-foreground" /></div>
+  }
   if (oauthLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-foreground mx-auto mb-4" />
-          <p className="text-foreground">Connecting to Supabase...</p>
-        </div>
-      </div>
-    )
+    return <div className="min-h-screen bg-background flex items-center justify-center"><div className="text-center"><Loader2 className="h-8 w-8 animate-spin text-foreground mx-auto mb-4" /><p className="text-foreground">Connecting to Supabase...</p></div></div>
   }
 
   return (
@@ -150,45 +194,52 @@ export default function ReconnectSupabasePage() {
           </Link>
         </Button>
 
-        <h1 className="text-3xl font-bold text-foreground mb-2">Reconnect Supabase</h1>
-        <p className="text-muted-foreground mb-8">Update your Supabase database connection credentials.</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Database Settings</h1>
+        <p className="text-muted-foreground mb-8">Update your Supabase & Pantry connection credentials.</p>
 
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        
-        {success && (
-          <Alert className="mb-6 border-green-500/50 bg-green-500/10 text-green-300">
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
+        {error && <Alert variant="destructive" className="mb-6"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
+        {success && <Alert className="mb-6 border-green-500/50 bg-green-500/10 text-green-300"><CheckCircle className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
 
+        {/* --- PANTRY INTEGRATION --- */}
+        <Card className="mb-6 border-border/50 bg-card/50">
+            <CardHeader>
+                <CardTitle>Pantry Integration</CardTitle>
+                <CardDescription>Connect your Pantry JSON storage to sync data.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {pantryId && (
+                    <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-md">
+                        <p className="text-sm">Connected to Pantry: <strong className="text-green-400 truncate">{pantryId}</strong></p>
+                        <Button onClick={handleDisconnectPantry} variant="destructive" disabled={isDisconnectingPantry} size="sm">
+                            {isDisconnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Disconnect
+                        </Button>
+                    </div>
+                )}
+                <div className="flex items-center gap-2">
+                    <Input 
+                        placeholder="Enter your Pantry ID"
+                        value={pantryInput}
+                        onChange={(e) => setPantryInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleConnectPantry()}
+                    />
+                    <Button onClick={handleConnectPantry} disabled={isConnectingPantry || !pantryInput}>
+                        {isConnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} {pantryId ? 'Switch' : 'Connect'}
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* --- SUPABASE CONNECTION --- */}
         {step === 'method' && (
           <div className="space-y-4">
             <Card className="border-border/50 bg-card/50">
               <CardHeader>
-                <CardTitle>Choose Connection Method</CardTitle>
+                <CardTitle>Supabase Connection</CardTitle>
                 <CardDescription>Select how you want to connect your Supabase account.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button 
-                  onClick={() => setStep('oauth')} 
-                  className="w-full bg-foreground text-background hover:bg-muted h-12 text-base"
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Connect via Supabase OAuth (Recommended)
-                </Button>
-                <Button 
-                  onClick={() => setStep('manual')} 
-                  variant="outline"
-                  className="w-full border-border h-12 text-base"
-                >
-                  Enter Credentials Manually
-                </Button>
+                <Button onClick={() => setStep('oauth')} className="w-full bg-foreground text-background hover:bg-muted h-12 text-base"><ExternalLink className="mr-2 h-4 w-4" />Connect via Supabase OAuth (Recommended)</Button>
+                <Button onClick={() => setStep('manual')} variant="outline" className="w-full border-border h-12 text-base">Enter Credentials Manually</Button>
               </CardContent>
             </Card>
           </div>
@@ -202,35 +253,12 @@ export default function ReconnectSupabasePage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="p-4 bg-blue-500/10 border border-blue-500/50 rounded-md">
-                <p className="text-sm text-blue-300">
-                  You will be redirected to Supabase to authorize HeHo to access your projects and API keys. Your credentials are never stored on our servers.
-                </p>
+                <p className="text-sm text-blue-300">You will be redirected to Supabase to authorize HeHo to access your projects and API keys. Your credentials are never stored on our servers.</p>
               </div>
-
               <div className="flex gap-3 pt-4">
-                <Button 
-                  onClick={() => setStep('method')} 
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleSupabaseOAuthConnect} 
-                  disabled={oauthLoading}
-                  className="flex-1 bg-foreground text-background hover:bg-muted"
-                >
-                  {oauthLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Connect with Supabase
-                    </>
-                  )}
+                <Button onClick={() => setStep('method')} variant="outline" className="flex-1">Back</Button>
+                <Button onClick={handleSupabaseOAuthConnect} disabled={oauthLoading} className="flex-1 bg-foreground text-background hover:bg-muted">
+                  {oauthLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connecting...</> : <><ExternalLink className="mr-2 h-4 w-4" />Connect with Supabase</>}
                 </Button>
               </div>
             </CardContent>
@@ -246,78 +274,19 @@ export default function ReconnectSupabasePage() {
             <CardContent className="space-y-6">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Supabase URL</label>
-                <Input 
-                  type="text" 
-                  placeholder="https://[project_ref].supabase.co" 
-                  value={supabaseUrl} 
-                  onChange={(e) => {
-                    setSupabaseUrl(e.target.value)
-                    setConnectionSuccess(false)
-                  }}
-                  className="mt-2 bg-background border-border" 
-                />
+                <Input type="text" placeholder="https://[project_ref].supabase.co" value={supabaseUrl} onChange={(e) => { setSupabaseUrl(e.target.value); setConnectionSuccess(false); }} className="mt-2 bg-background border-border" />
                 <p className="text-xs text-muted-foreground mt-1">You can find this in your Supabase project settings.</p>
               </div>
-
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Supabase Anon (Public) Key</label>
-                <Input 
-                  type="password" 
-                  placeholder="ey..." 
-                  value={supabaseKey} 
-                  onChange={(e) => {
-                    setSupabaseKey(e.target.value)
-                    setConnectionSuccess(false)
-                  }}
-                  className="mt-2 bg-background border-border" 
-                />
+                <Input type="password" placeholder="ey..." value={supabaseKey} onChange={(e) => { setSupabaseKey(e.target.value); setConnectionSuccess(false); }} className="mt-2 bg-background border-border" />
                 <p className="text-xs text-muted-foreground mt-1">This is your public API key, not your service role key.</p>
               </div>
-
-              {connectionSuccess && (
-                <Alert className="border-green-500/50 bg-green-500/10 text-green-300">
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>Connection verified successfully!</AlertDescription>
-                </Alert>
-              )}
-
+              {connectionSuccess && <Alert className="border-green-500/50 bg-green-500/10 text-green-300"><CheckCircle className="h-4 w-4" /><AlertDescription>Connection verified successfully!</AlertDescription></Alert>}
               <div className="flex gap-3 pt-4">
-                <Button 
-                  onClick={() => setStep('method')} 
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Back
-                </Button>
-                <Button 
-                  onClick={testSupabaseConnection} 
-                  disabled={!supabaseUrl || !supabaseKey || testing}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  {testing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Testing...
-                    </>
-                  ) : (
-                    'Test Connection'
-                  )}
-                </Button>
-                <Button 
-                  onClick={handleSaveSupabaseCredentials} 
-                  disabled={!connectionSuccess || saving}
-                  className="flex-1 bg-foreground text-background hover:bg-muted"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Credentials'
-                  )}
-                </Button>
+                <Button onClick={() => setStep('method')} variant="outline" className="flex-1">Back</Button>
+                <Button onClick={testSupabaseConnection} disabled={!supabaseUrl || !supabaseKey || testing} variant="outline" className="flex-1">{testing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Testing...</> : 'Test Connection'}</Button>
+                <Button onClick={handleSaveSupabaseCredentials} disabled={!connectionSuccess || saving} className="flex-1 bg-foreground text-background hover:bg-muted">{saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Credentials'}</Button>
               </div>
             </CardContent>
           </Card>
