@@ -26,12 +26,6 @@ export default function ReconnectSupabasePage() {
   const [connectionSuccess, setConnectionSuccess] = useState(false)
   const [oauthLoading, setOauthLoading] = useState(false)
 
-  // Pantry states
-  const [pantryId, setPantryId] = useState("")
-  const [pantryInput, setPantryInput] = useState("")
-  const [isConnectingPantry, setIsConnectingPantry] = useState(false)
-  const [isDisconnectingPantry, setIsDisconnectingPantry] = useState(false)
-
   const router = useRouter()
   const supabase = createClient()
 
@@ -44,17 +38,6 @@ export default function ReconnectSupabasePage() {
         return
       }
       setUser(currentUser)
-
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('pantry_id')
-        .eq('id', currentUser.id)
-        .single()
-      
-      if(userData) {
-        setPantryId(userData.pantry_id || "")
-      }
-
       setLoading(false)
     }
 
@@ -66,7 +49,6 @@ export default function ReconnectSupabasePage() {
       setSuccess(null)
   }
 
-  // --- Supabase Handlers ---
   const handleSupabaseOAuthConnect = () => {
     if (!user?.id) {
       setError('User ID not found')
@@ -136,48 +118,6 @@ export default function ReconnectSupabasePage() {
     }
   }
 
-  // --- Pantry Handlers ---
-  const handleConnectPantry = async () => {
-      if (!pantryInput) {
-          setError("Please enter a Pantry ID.")
-          return
-      }
-      setIsConnectingPantry(true)
-      clearMessages()
-      try {
-        const response = await fetch('/api/pantry/connect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pantryId: pantryInput })
-        })
-        const data = await response.json()
-        if (!response.ok) throw new Error(data.error)
-        setSuccess(data.message)
-        if (data.data) {
-            setPantryId(data.data.pantry_id || "")
-            setPantryInput("")
-        }
-      } catch (err: any) {
-        setError(err.message)
-      }
-      setIsConnectingPantry(false)
-  }
-
-  const handleDisconnectPantry = async () => {
-      setIsDisconnectingPantry(true)
-      clearMessages()
-      try {
-        const response = await fetch('/api/pantry/connect', { method: 'DELETE' })
-        const data = await response.json()
-        if (!response.ok) throw new Error(data.error)
-        setSuccess(data.message)
-        setPantryId("")
-      } catch (err: any) {
-        setError(err.message)
-      }
-      setIsDisconnectingPantry(false)
-  }
-
   if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-foreground" /></div>
   }
@@ -194,47 +134,17 @@ export default function ReconnectSupabasePage() {
           </Link>
         </Button>
 
-        <h1 className="text-3xl font-bold text-foreground mb-2">Database Settings</h1>
-        <p className="text-muted-foreground mb-8">Update your Supabase & Pantry connection credentials.</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Reconnect Supabase</h1>
+        <p className="text-muted-foreground mb-8">Update your Supabase database connection credentials.</p>
 
         {error && <Alert variant="destructive" className="mb-6"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
         {success && <Alert className="mb-6 border-green-500/50 bg-green-500/10 text-green-300"><CheckCircle className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
 
-        {/* --- PANTRY INTEGRATION --- */}
-        <Card className="mb-6 border-border/50 bg-card/50">
-            <CardHeader>
-                <CardTitle>Pantry Integration</CardTitle>
-                <CardDescription>Connect your Pantry JSON storage to sync data.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {pantryId && (
-                    <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-md">
-                        <p className="text-sm">Connected to Pantry: <strong className="text-green-400 truncate">{pantryId}</strong></p>
-                        <Button onClick={handleDisconnectPantry} variant="destructive" disabled={isDisconnectingPantry} size="sm">
-                            {isDisconnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Disconnect
-                        </Button>
-                    </div>
-                )}
-                <div className="flex items-center gap-2">
-                    <Input 
-                        placeholder="Enter your Pantry ID"
-                        value={pantryInput}
-                        onChange={(e) => setPantryInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleConnectPantry()}
-                    />
-                    <Button onClick={handleConnectPantry} disabled={isConnectingPantry || !pantryInput}>
-                        {isConnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} {pantryId ? 'Switch' : 'Connect'}
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-
-        {/* --- SUPABASE CONNECTION --- */}
         {step === 'method' && (
           <div className="space-y-4">
             <Card className="border-border/50 bg-card/50">
               <CardHeader>
-                <CardTitle>Supabase Connection</CardTitle>
+                <CardTitle>Choose Connection Method</CardTitle>
                 <CardDescription>Select how you want to connect your Supabase account.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
