@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
-import { CheckCircle, AlertCircle, Loader2, LogOut, Key, Database, User, Shield, Copy, Trash2, ExternalLink } from "lucide-react"
+import { CheckCircle, AlertCircle, Loader2, LogOut, Key, Database, User, Shield, Copy, Trash2, ExternalLink, Plus } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 
@@ -17,6 +17,8 @@ export default function SettingsPage() {
   const [supabaseUrl, setSupabaseUrl] = useState("")
   const [supabaseKey, setSupabaseKey] = useState("")
   const [storageBucket, setStorageBucket] = useState("")
+  const [storageColumns, setStorageColumns] = useState<string[]>([])
+  const [newColumnName, setNewColumnName] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -25,6 +27,7 @@ export default function SettingsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isSavingColumns, setIsSavingColumns] = useState(false);
 
   const router = useRouter()
   const supabase = createClient()
@@ -47,6 +50,7 @@ export default function SettingsPage() {
         setSupabaseKey(data.supabase_key_encrypted || "")
         setHehoApiKey(data.heho_api_key || "")
         setStorageBucket(data.storage_bucket || "")
+        setStorageColumns(data.storage_columns || [])
       }
       setLoading(false)
     }
@@ -132,7 +136,7 @@ export default function SettingsPage() {
       const response = await fetch("/api/database/connect-storage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bucketName: storageBucket }),
+        body: JSON.stringify({ bucketName: storageBucket, storageColumns }),
       });
       const result = await response.json();
       if (!response.ok) {
@@ -143,6 +147,45 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "Failed to connect storage bucket");
     } finally {
       setSaving(false);
+    }
+  }
+
+  const handleAddColumn = () => {
+    if (newColumnName.trim() && !storageColumns.includes(newColumnName.trim())) {
+      setStorageColumns([...storageColumns, newColumnName.trim()])
+      setNewColumnName("")
+    }
+  }
+
+  const handleRemoveColumn = (columnToRemove: string) => {
+    setStorageColumns(storageColumns.filter(col => col !== columnToRemove))
+  }
+
+  const handleSaveColumns = async () => {
+    if (!storageBucket) {
+      setError("Please connect a storage bucket first.")
+      return
+    }
+
+    setIsSavingColumns(true)
+    setError(null)
+    setSuccess(null)
+    
+    try {
+      const response = await fetch("/api/database/connect-storage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bucketName: storageBucket, storageColumns }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error)
+      }
+      setSuccess("Storage columns saved successfully!")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save storage columns")
+    } finally {
+      setIsSavingColumns(false)
     }
   }
 
@@ -254,15 +297,80 @@ export default function SettingsPage() {
           <Card className="border-border/50 bg-card/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" /> Storage Bucket</CardTitle>
-              <CardDescription>Connect your Supabase storage bucket.</CardDescription>
+              <CardDescription>Connect your Supabase storage bucket and configure storage columns.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              {/* Storage Bucket Connection */}
+              <div className="pb-6 border-b border-border/50">
+                <label className="text-sm font-medium text-muted-foreground block mb-2">Bucket Name</label>
+                <div className="flex gap-2">
+                  <Input 
+                    type="text" 
+                    placeholder="your-bucket-name" 
+                    value={storageBucket} 
+                    onChange={(e) => setStorageBucket(e.target.value)} 
+                    className="bg-background/50" 
+                  />
+                  <Button onClick={handleConnectBucket} disabled={saving} className="shrink-0">
+                    {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/></> : null} 
+                    {storageBucket ? 'Update' : 'Connect'}
+                  </Button>
+                </div>
+                {storageBucket && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">✓ Connected to: <strong>{storageBucket}</strong></p>
+                )}
+              </div>
+
+              {/* Storage Columns Configuration */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Bucket Name</label>
-                <Input type="text" placeholder="your-bucket-name" value={storageBucket} onChange={(e) => setStorageBucket(e.target.value)} className="mt-1 bg-background/50" />
-                 <Button onClick={handleConnectBucket} disabled={saving} size="sm" className="mt-2">
-                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Connecting...</> : "Connect"}
+                <label className="text-sm font-medium text-muted-foreground block mb-2">Storage Columns</label>
+                <p className="text-xs text-muted-foreground mb-3">Specify which table columns contain file links. These columns will show a "View" button in the database tab.</p>
+                
+                <div className="flex gap-2 mb-3">
+                  <Input 
+                    placeholder="Add column name (e.g., document, file_url)" 
+                    value={newColumnName} 
+                    onChange={(e) => setNewColumnName(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddColumn()}
+                    className="bg-background/50"
+                  />
+                  <Button onClick={handleAddColumn} size="sm" variant="outline" className="shrink-0">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="space-y-2 p-3 bg-muted/50 rounded-md border border-border/30 min-h-[40px]">
+                  {storageColumns.length > 0 ? (
+                    storageColumns.map((col, index) => (
+                      <div key={index} className="flex items-center justify-between bg-background/50 p-2 rounded text-sm">
+                        <span className="font-mono">{col}</span>
+                        <Button 
+                          onClick={() => handleRemoveColumn(col)} 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                        >
+                          <Trash2 className="h-3 w-3 text-red-500" />
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">No columns specified</p>
+                  )}
+                </div>
+
+                <Button 
+                  onClick={handleSaveColumns} 
+                  disabled={isSavingColumns || !storageBucket}
+                  className="mt-3 w-full"
+                >
+                  {isSavingColumns ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Save Storage Columns
                 </Button>
+
+                {!storageBucket && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">⚠ Connect a storage bucket first to save column settings.</p>
+                )}
               </div>
             </CardContent>
           </Card>

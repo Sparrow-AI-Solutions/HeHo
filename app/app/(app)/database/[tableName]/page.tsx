@@ -21,7 +21,10 @@ interface FilePreviewModalProps {
   fileUrl: string;
   onClose: () => void;
   onSave: (newUrl: string) => void;
+  onUpload: (file: File) => void;
   isSaving: boolean;
+  isUploading: boolean;
+  bucketName: string;
 }
 
 const debounce = <F extends (...args: any[]) => void>(func: F, delay: number) => {
@@ -33,13 +36,25 @@ const debounce = <F extends (...args: any[]) => void>(func: F, delay: number) =>
 };
 
 // File Preview Modal Component
-function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, isSaving }: FilePreviewModalProps) {
+function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving, isUploading, bucketName }: FilePreviewModalProps) {
   const [newFileUrl, setNewFileUrl] = useState(fileUrl);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [uploadMode, setUploadMode] = useState(false);
+  const fileInputRef = useCallback((input: HTMLInputElement | null) => {
+    if (input) {
+      input.addEventListener('change', (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          onUpload(file);
+        }
+      });
+    }
+  }, [onUpload]);
 
   useEffect(() => {
     setNewFileUrl(fileUrl);
     setPreviewError(null);
+    setUploadMode(false);
   }, [fileUrl, isOpen]);
 
   if (!isOpen) return null;
@@ -129,7 +144,7 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, isSaving }: FilePr
       <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur">
-          <h2 className="text-lg font-semibold">File Preview</h2>
+          <h2 className="text-lg font-semibold">File Preview & Edit</h2>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
@@ -154,41 +169,94 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, isSaving }: FilePr
           {/* File URL Display */}
           <div className="border rounded-lg p-4">
             <p className="text-xs font-semibold text-muted-foreground mb-2">CURRENT FILE URL</p>
-            <div className="p-2 bg-muted rounded text-xs break-all font-mono text-muted-foreground">
+            <div className="p-2 bg-muted rounded text-xs break-all font-mono text-muted-foreground max-h-20 overflow-auto">
               {fileUrl}
             </div>
           </div>
 
-          {/* Edit Section */}
+          {/* Edit Section - Toggle between URL and Upload */}
           <div className="border rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/30">
-            <p className="text-xs font-semibold text-muted-foreground mb-3">EDIT FILE</p>
-            <div className="space-y-2">
-              <Input
-                placeholder="Enter new file URL or paste updated link"
-                value={newFileUrl}
-                onChange={(e) => setNewFileUrl(e.target.value)}
-                className="text-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                Upload a new file to your storage bucket and paste the new link here
-              </p>
+            <div className="flex gap-2 mb-3">
+              <Button 
+                size="sm" 
+                variant={uploadMode ? "outline" : "default"}
+                onClick={() => setUploadMode(false)}
+              >
+                Edit URL
+              </Button>
+              <Button 
+                size="sm" 
+                variant={uploadMode ? "default" : "outline"}
+                onClick={() => setUploadMode(true)}
+              >
+                Upload File
+              </Button>
             </div>
+
+            {uploadMode ? (
+              // File Upload Mode
+              <div className="space-y-3">
+                <div className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-6 text-center">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    id="file-upload"
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                  <label 
+                    htmlFor="file-upload" 
+                    className="cursor-pointer block"
+                  >
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+                    <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                      {isUploading ? 'Uploading...' : 'Click to upload a new file'}
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      File will be saved to: <strong>{bucketName}</strong>
+                    </p>
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Select a file to upload. It will replace the current file in your storage bucket.
+                </p>
+              </div>
+            ) : (
+              // URL Edit Mode
+              <div className="space-y-2">
+                <Input
+                  placeholder="Enter new file URL or paste updated link"
+                  value={newFileUrl}
+                  onChange={(e) => setNewFileUrl(e.target.value)}
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paste a new file link from your storage bucket
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 flex gap-2 p-4 border-t bg-background/95 backdrop-blur justify-end">
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+        <div className="sticky bottom-0 flex gap-2 p-4 border-t bg-background/95 backdrop-blur justify-end flex-wrap">
+          <Button variant="outline" onClick={onClose} disabled={isSaving || isUploading}>
             Cancel
           </Button>
-          <Button variant="outline" onClick={handleDownload} disabled={isSaving} className="gap-2">
+          <Button variant="outline" onClick={handleDownload} disabled={isSaving || isUploading} className="gap-2">
             <Download className="h-4 w-4" />
             Download
           </Button>
-          <Button onClick={handleSaveNewUrl} disabled={isSaving || !newFileUrl.trim() || newFileUrl === fileUrl}>
-            {isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
-            Save
-          </Button>
+          {!uploadMode && (
+            <Button 
+              onClick={handleSaveNewUrl} 
+              disabled={isSaving || !newFileUrl.trim() || newFileUrl === fileUrl}
+              className="gap-2"
+            >
+              {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <Upload className="h-4 w-4" />}
+              Save URL
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -213,9 +281,14 @@ export default function TableViewPage() {
   const [selectedRowId, setSelectedRowId] = useState<any>(null);
   const [selectedColumn, setSelectedColumn] = useState("");
   const [isSavingFile, setIsSavingFile] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   // Storage columns state
   const [storageColumns, setStorageColumns] = useState<string[]>([]);
+  const [storageBucket, setStorageBucket] = useState<string>("");
+
+  // Success state
+  const [success, setSuccess] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -236,8 +309,8 @@ export default function TableViewPage() {
     }
   }, [tableName])
 
-  // Fetch storage columns from user settings
-  const fetchStorageColumns = useCallback(async () => {
+  // Fetch storage columns and bucket from user settings
+  const fetchStorageConfig = useCallback(async () => {
     try {
       const response = await fetch('/api/database/get-storage-columns', {
         method: 'GET',
@@ -246,18 +319,19 @@ export default function TableViewPage() {
       if (response.ok) {
         const result = await response.json()
         setStorageColumns(result.storageColumns || [])
+        setStorageBucket(result.storageBucket || "")
       }
     } catch (err) {
-      console.error('Failed to fetch storage columns:', err)
+      console.error('Failed to fetch storage config:', err)
     }
   }, [])
 
   useEffect(() => {
     if (tableName) {
       fetchData()
-      fetchStorageColumns()
+      fetchStorageConfig()
     }
-  }, [tableName, fetchData, fetchStorageColumns])
+  }, [tableName, fetchData, fetchStorageConfig])
 
   const debouncedRefetch = useCallback(debounce(() => { 
     setEditingRowId(null);
@@ -338,7 +412,48 @@ export default function TableViewPage() {
     }
   };
 
-  const [success, setSuccess] = useState<string | null>(null);
+  const handleUploadFile = async (file: File) => {
+    if (!selectedRowId || !selectedColumn || !storageBucket) return;
+
+    setIsUploadingFile(true);
+    try {
+      // Generate a unique file path
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 8);
+      const fileName = `${timestamp}-${randomStr}-${file.name}`;
+      const filePath = `${selectedColumn}/${fileName}`;
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('bucketName', storageBucket);
+      formData.append('filePath', filePath);
+
+      const response = await fetch('/api/database/upload-file', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to upload file');
+      }
+
+      // Save the new file URL to the database
+      await handleApiAction('UPDATE_ROW', {
+        rowId: selectedRowId,
+        updatedData: { [selectedColumn]: result.fileUrl }
+      });
+
+      setSelectedFileUrl(result.fileUrl);
+      setSuccess('File uploaded and saved successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload file');
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
 
   const isFileColumn = (column: string): boolean => {
     return storageColumns.includes(column);
@@ -466,7 +581,10 @@ export default function TableViewPage() {
         fileUrl={selectedFileUrl}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveFileUrl}
+        onUpload={handleUploadFile}
         isSaving={isSavingFile}
+        isUploading={isUploadingFile}
+        bucketName={storageBucket}
       />
     </div>
   )
