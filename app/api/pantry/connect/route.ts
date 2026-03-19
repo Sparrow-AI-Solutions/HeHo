@@ -4,6 +4,14 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
+// Handle cases where the client accidentally sends a GET request
+export async function GET() {
+  return NextResponse.json(
+    { error: 'This endpoint should be called with POST to connect, or DELETE to disconnect. GET is not a supported method.' },
+    { status: 405 } // 405 Method Not Allowed
+  );
+}
+
 export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies })
 
@@ -33,14 +41,13 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ 
-      message: 'Pantry successfully connected!', 
+      message: 'Pantry ID saved successfully!', 
       data 
     })
 
   } catch (error: any) {
-    // This will catch errors from a malformed request body (e.g., not valid JSON)
     if (error instanceof SyntaxError) {
-        return NextResponse.json({ error: 'Invalid request format.' }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid request format. Make sure the data is being sent correctly.' }, { status: 400 });
     }
     console.error("Unexpected error in /api/pantry/connect:", error)
     return NextResponse.json({ error: 'An unexpected server error occurred.' }, { status: 500 })
