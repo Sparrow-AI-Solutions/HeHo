@@ -288,19 +288,22 @@ function CellEditor({ value, onSave, onCancel, position }: CellEditorProps) {
   const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 });
 
   useEffect(() => {
-    if (!editorRef.current) return;
+    if (!position) return;
 
     const windowHeight = window.innerHeight;
     const windowWidth = window.innerWidth;
     const margin = 16;
+    const desiredMaxHeight = 280; // Decreased max height
+    const minEditorHeight = 150; // Min height to trigger flip
 
     const editorWidth = Math.max(position.width, 320);
-    const editorMaxHeight = Math.min(windowHeight - margin * 2, 350);
 
     let top: number | undefined;
     let bottom: number | undefined;
     let left = position.left;
+    let finalMaxHeight: number;
 
+    // Horizontal positioning
     if (left + editorWidth > windowWidth - margin) {
       left = windowWidth - editorWidth - margin;
     }
@@ -310,12 +313,16 @@ function CellEditor({ value, onSave, onCancel, position }: CellEditorProps) {
 
     const spaceBelow = windowHeight - position.bottom - margin;
     const spaceAbove = position.top - margin;
-    
-    // Minimum height of editor is around 150px
-    if (spaceBelow < 150 && spaceAbove > spaceBelow) {
+
+    // Decide whether to open above or below
+    if (spaceBelow < minEditorHeight && spaceAbove > spaceBelow) {
+      // Open Above
       bottom = windowHeight - position.top;
+      finalMaxHeight = Math.min(spaceAbove, desiredMaxHeight);
     } else {
+      // Open Below (default)
       top = position.bottom;
+      finalMaxHeight = Math.min(spaceBelow, desiredMaxHeight);
     }
 
     setStyle({
@@ -323,11 +330,12 @@ function CellEditor({ value, onSave, onCancel, position }: CellEditorProps) {
       bottom,
       left,
       width: editorWidth,
-      maxHeight: editorMaxHeight,
+      maxHeight: finalMaxHeight,
       opacity: 1,
     });
     
     textareaRef.current?.focus();
+
   }, [position]);
 
   useEffect(() => {
