@@ -13,13 +13,19 @@ export default function StorageSettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   
+  // Storage Bucket States
   const [connectedBucket, setConnectedBucket] = useState("")
   const [bucketInput, setBucketInput] = useState("")
-  
-  const [storageColumns, setStorageColumns] = useState<string[]>([])
-  const [newColumnName, setNewColumnName] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
+  
+  // Pantry ID State
+  const [pantryId, setPantryId] = useState("")
+  const [isSavingPantry, setIsSavingPantry] = useState(false)
+
+  // Storage Columns States
+  const [storageColumns, setStorageColumns] = useState<string[]>([])
+  const [newColumnName, setNewColumnName] = useState("")
   const [isSavingColumns, setIsSavingColumns] = useState(false)
 
   const supabase = createClient()
@@ -31,7 +37,7 @@ export default function StorageSettingsPage() {
       if (user) {
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('storage_bucket, storage_columns')
+          .select('storage_bucket, storage_columns, pantry_id')
           .eq('id', user.id)
           .single()
 
@@ -40,6 +46,7 @@ export default function StorageSettingsPage() {
         } else if (userData) {
           setConnectedBucket(userData.storage_bucket || "")
           setStorageColumns(userData.storage_columns || [])
+          setPantryId(userData.pantry_id || "")
         }
       }
       setLoading(false)
@@ -59,7 +66,7 @@ export default function StorageSettingsPage() {
     const response = await fetch('/api/database/connect-storage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bucketName: bucketInput, storageColumns }),
+      body: JSON.stringify({ bucketName: bucketInput }),
     })
     const data = await response.json()
 
@@ -67,7 +74,6 @@ export default function StorageSettingsPage() {
       setSuccess(data.message)
       if (data.data) {
         setConnectedBucket(data.data.storage_bucket || "")
-        setStorageColumns(data.data.storage_columns || [])
         setBucketInput("")
       }
     } else {
@@ -96,8 +102,9 @@ export default function StorageSettingsPage() {
   }
 
   const handleAddColumn = () => {
-    if (newColumnName.trim() && !storageColumns.includes(newColumnName.trim())) {
-      setStorageColumns([...storageColumns, newColumnName.trim()])
+    const trimmedName = newColumnName.trim()
+    if (trimmedName && !storageColumns.includes(trimmedName)) {
+      setStorageColumns([...storageColumns, trimmedName])
       setNewColumnName("")
     }
   }
@@ -106,30 +113,52 @@ export default function StorageSettingsPage() {
     setStorageColumns(storageColumns.filter(col => col !== columnToRemove))
   }
 
-  const handleSaveChanges = async () => {
-    if (!connectedBucket) {
-      setError("Please connect a storage bucket first.")
+  const handleSavePantryId = async () => {
+    setIsSavingPantry(true)
+    setError(null)
+    setSuccess(null)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError("You must be logged in to save settings.")
+      setIsSavingPantry(false)
       return
     }
 
+    const { error: userUpdateError } = await supabase
+      .from('users')
+      .update({ pantry_id: pantryId })
+      .eq('id', user.id)
+
+    if (userUpdateError) {
+      setError(`Failed to save Pantry ID: ${userUpdateError.message}`)
+    } else {
+      setSuccess("Pantry ID saved successfully!")
+    }
+    setIsSavingPantry(false)
+  }
+
+  const handleSaveStorageColumns = async () => {
     setIsSavingColumns(true)
     setError(null)
     setSuccess(null)
-    
-    const response = await fetch("/api/database/connect-storage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bucketName: connectedBucket, storageColumns }),
-    })
-    const data = await response.json()
 
-    if (response.ok) {
-      setSuccess("Storage columns saved successfully!")
-      if (data.data) {
-        setStorageColumns(data.data.storage_columns || [])
-      }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError("You must be logged in to save settings.")
+      setIsSavingColumns(false)
+      return
+    }
+    
+    const { error: userUpdateError } = await supabase
+      .from('users')
+      .update({ storage_columns: storageColumns })
+      .eq('id', user.id)
+
+    if (userUpdateError) {
+      setError(`Failed to save storage columns: ${userUpdateError.message}`)
     } else {
-      setError(data.error)
+      setSuccess("Storage columns saved successfully!")
     }
     setIsSavingColumns(false)
   }
@@ -139,14 +168,15 @@ export default function StorageSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Storage Settings</h1>
-      {error && <Alert variant="destructive"><XCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
-      {success && <Alert><CheckCircle className="h-4 w-4" /><AlertDescription>{success}</AlertDescription></Alert>}
+    <div className="container mx-auto p-4 max-w-3xl">
+      <h1 className="text-2xl font-bold mb-6">Storage Settings</h1>
+      
+      {error && <Alert variant="destructive" className="mb-4"><XCircle className="h-4 w-4 mr-2" /><AlertDescription>{error}</AlertDescription></Alert>}
+      {success && <Alert className="mb-4 border-green-500/50 text-green-700"><CheckCircle className="h-4 w-4 mr-2 text-green-600" /><AlertDescription>{success}</AlertDescription></Alert>}
 
-      <Card className="mt-6">
+      <Card>
         <CardHeader>
-          <CardTitle>Storage Bucket</CardTitle>
+          <CardTitle>Supabase Storage Bucket</CardTitle>
           <CardDescription>Connect or switch your Supabase storage bucket.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -174,48 +204,64 @@ export default function StorageSettingsPage() {
 
       <Card className="mt-6">
         <CardHeader>
+          <CardTitle>Pantry Integration</CardTitle>
+          <CardDescription>Connect your Pantry JSON storage to sync data.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <Input 
+                placeholder="Enter your Pantry ID"
+                value={pantryId}
+                onChange={(e) => setPantryId(e.target.value)}
+              />
+            <Button onClick={handleSavePantryId} disabled={isSavingPantry}>
+              {isSavingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
           <CardTitle>Storage Columns</CardTitle>
           <CardDescription>Specify which table columns contain file links from your storage bucket. These columns will display a "View" button instead of raw links.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-4">
             <Input 
-              placeholder="Add column name (e.g., document, file_url)" 
+              placeholder="Add column name (e.g., 'document', 'file_url')" 
               value={newColumnName} 
               onChange={(e) => setNewColumnName(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddColumn()}
             />
-            <Button onClick={handleAddColumn} size="sm"><Plus className="h-4 w-4" /></Button>
+            <Button onClick={handleAddColumn} size="icon" className="h-9 w-9 flex-shrink-0"><Plus className="h-4 w-4" /></Button>
           </div>
           <div className="space-y-2 min-h-[40px] p-3 bg-muted rounded-md border border-border/50">
             {storageColumns.length > 0 ? (
               storageColumns.map((col, index) => (
-                <div key={index} className="flex items-center justify-between bg-background/50 p-2 rounded">
+                <div key={index} className="flex items-center justify-between bg-background/50 p-2 rounded-md shadow-sm">
                   <span className="font-mono text-sm">{col}</span>
                   <Button 
                     onClick={() => handleRemoveColumn(col)} 
                     variant="ghost" 
-                    size="sm"
-                    className="h-6 w-6 p-0"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-red-500"
                   >
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">No columns specified. Add columns to enable file preview functionality.</p>
+              <p className="text-sm text-muted-foreground p-2">No columns specified. Add columns to enable file preview functionality.</p>
             )}
           </div>
           <Button 
-            onClick={handleSaveChanges} 
+            onClick={handleSaveStorageColumns} 
             className="mt-4 w-full" 
             disabled={isSavingColumns || !connectedBucket}
           >
-            {isSavingColumns ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Save Changes
+            {isSavingColumns ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Save Column Changes
           </Button>
-          {!connectedBucket && (
-            <p className="text-xs text-muted-foreground mt-2">Connect a storage bucket first to save column settings.</p>
-          )}
         </CardContent>
       </Card>
     </div>
