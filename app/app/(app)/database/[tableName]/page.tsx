@@ -278,13 +278,52 @@ interface CellEditorProps {
   value: any;
   onSave: (value: any) => void;
   onCancel: () => void;
-  onSetNull: () => void;
-  position: { top: number; left: number; width: number };
+  position: any; // Expects a DOMRect object from getBoundingClientRect()
 }
 
-function CellEditor({ value, onSave, onCancel, onSetNull, position }: CellEditorProps) {
+function CellEditor({ value, onSave, onCancel, position }: CellEditorProps) {
   const [currentValue, setCurrentValue] = useState(value === null ? '' : String(value));
   const editorRef = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 });
+
+  useEffect(() => {
+    if (editorRef.current) {
+      const editorRect = editorRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const windowWidth = window.innerWidth;
+      const margin = 16;
+
+      let top = position.bottom;
+      let left = position.left;
+
+      // Adjust top position if it overflows from bottom
+      if (top + editorRect.height > windowHeight - margin) {
+        top = position.top - editorRect.height;
+      }
+      
+      // Ensure it doesn't go off-screen from the top
+      if (top < margin) {
+        top = margin;
+      }
+
+      // Adjust left position if it overflows from right
+      if (left + editorRect.width > windowWidth - margin) {
+        left = windowWidth - editorRect.width - margin;
+      }
+
+      // Ensure it doesn't go off-screen from the left
+      if (left < margin) {
+        left = margin;
+      }
+
+      setStyle({
+        top,
+        left,
+        width: Math.max(position.width, 300),
+        opacity: 1,
+      });
+    }
+  }, [position]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -306,14 +345,10 @@ function CellEditor({ value, onSave, onCancel, onSetNull, position }: CellEditor
   };
 
   return (
-    <div 
+    <div
       ref={editorRef}
-      className="fixed z-[100] bg-background border rounded-lg shadow-xl p-3 flex flex-col gap-3 min-w-[300px]"
-      style={{ 
-        top: position.top, 
-        left: position.left,
-        width: Math.max(position.width, 300)
-      }}
+      className="fixed z-[100] bg-background border rounded-lg shadow-xl p-3 flex flex-col gap-3 min-w-[300px] transition-opacity"
+      style={style}
     >
       <Textarea
         autoFocus
@@ -322,7 +357,6 @@ function CellEditor({ value, onSave, onCancel, onSetNull, position }: CellEditor
         onKeyDown={handleKeyDown}
         className="min-h-[120px] font-mono text-sm resize-y"
       />
-      
       <div className="flex items-center justify-between gap-2">
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => onSave(currentValue)} className="gap-1.5 h-8">
@@ -332,15 +366,6 @@ function CellEditor({ value, onSave, onCancel, onSetNull, position }: CellEditor
           <Button size="sm" variant="ghost" onClick={onCancel} className="gap-1.5 h-8 text-muted-foreground">
             <span className="text-[10px] border rounded px-1 py-0.5">Esc</span>
             Cancel changes
-          </Button>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={onSetNull} className="h-8">
-            Set to NULL
-          </Button>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-            <Maximize2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
@@ -462,11 +487,7 @@ export default function TableViewPage() {
     setActiveCell({
       rowId,
       col,
-      position: {
-        top: rect.top + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width
-      }
+      position: rect
     });
   };
 
@@ -481,22 +502,6 @@ export default function TableViewPage() {
       setActiveCell(null);
     } catch (err) {
       console.error('Failed to save cell:', err);
-    } finally {
-      setIsSavingCell(false);
-    }
-  };
-
-  const handleSetNull = async () => {
-    if (!activeCell) return;
-    setIsSavingCell(true);
-    try {
-      await handleApiAction('UPDATE_ROW', {
-        rowId: activeCell.rowId,
-        updatedData: { [activeCell.col]: null }
-      });
-      setActiveCell(null);
-    } catch (err) {
-      console.error('Failed to set NULL:', err);
     } finally {
       setIsSavingCell(false);
     }
@@ -714,7 +719,6 @@ export default function TableViewPage() {
           value={tableData.data.find(r => r.id === activeCell.rowId)?.[activeCell.col]}
           onSave={handleSaveCell}
           onCancel={() => setActiveCell(null)}
-          onSetNull={handleSetNull}
           position={activeCell.position}
         />
       )}
