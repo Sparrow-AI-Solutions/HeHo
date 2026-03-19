@@ -5,14 +5,15 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
-  const { pantryId } = await request.json()
   const supabase = createRouteHandlerClient({ cookies })
 
-  if (!pantryId) {
-    return NextResponse.json({ error: 'Pantry ID is required' }, { status: 400 })
-  }
-
   try {
+    const { pantryId } = await request.json()
+
+    if (!pantryId || typeof pantryId !== 'string') {
+      return NextResponse.json({ error: 'A valid Pantry ID is required' }, { status: 400 })
+    }
+
     // 1. Verify the user is authenticated
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -23,15 +24,20 @@ export async function POST(request: Request) {
     const pantryResponse = await fetch(`https://getpantry.cloud/apiv1/pantry/${pantryId}`)
 
     if (!pantryResponse.ok) {
-        // Pantry returns a 400 for invalid ID format and 404 if not found
         if (pantryResponse.status === 400 || pantryResponse.status === 404) {
             return NextResponse.json({ error: 'Invalid or non-existent Pantry ID.' }, { status: 400 });
         }
-        // Handle other potential server errors from Pantry
         return NextResponse.json({ error: 'Could not verify Pantry ID. The service may be down.' }, { status: 500 });
     }
+    
+    // 3. Also, try to parse the response to ensure the pantry is not empty/malformed
+    try {
+      await pantryResponse.json();
+    } catch (e) {
+      return NextResponse.json({ error: 'Pantry ID seems valid, but the pantry itself is empty or contains malformed data.' }, { status: 400 });
+    }
 
-    // 3. Update the user's record in Supabase
+    // 4. Update the user's record in Supabase
     const { data, error } = await supabase
       .from('users')
       .update({ pantry_id: pantryId })
@@ -49,6 +55,9 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
+    if (error instanceof SyntaxError) {
+        return NextResponse.json({ error: 'Invalid request. Make sure you are sending valid JSON.' }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message || 'An unexpected error occurred' }, { status: 500 })
   }
 }
