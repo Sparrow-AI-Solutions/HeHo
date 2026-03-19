@@ -87,6 +87,7 @@ export default function StorageSettingsPage() {
 
     if (response.ok) {
       setConnectedBucket("")
+      setStorageColumns([])
       setSuccess(data.message)
     } else {
       setError(data.error)
@@ -95,8 +96,8 @@ export default function StorageSettingsPage() {
   }
 
   const handleAddColumn = () => {
-    if (newColumnName && !storageColumns.includes(newColumnName)) {
-      setStorageColumns([...storageColumns, newColumnName])
+    if (newColumnName.trim() && !storageColumns.includes(newColumnName.trim())) {
+      setStorageColumns([...storageColumns, newColumnName.trim()])
       setNewColumnName("")
     }
   }
@@ -106,26 +107,32 @@ export default function StorageSettingsPage() {
   }
 
   const handleSaveChanges = async () => {
-    setIsSavingColumns(true);
-    setError(null);
-    setSuccess(null);
+    if (!connectedBucket) {
+      setError("Please connect a storage bucket first.")
+      return
+    }
+
+    setIsSavingColumns(true)
+    setError(null)
+    setSuccess(null)
+    
     const response = await fetch("/api/database/connect-storage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bucketName: connectedBucket, storageColumns }),
-    });
-    const data = await response.json();
+    })
+    const data = await response.json()
 
     if (response.ok) {
-      setSuccess(data.message);
+      setSuccess("Storage columns saved successfully!")
       if (data.data) {
-        setStorageColumns(data.data.storage_columns || []);
+        setStorageColumns(data.data.storage_columns || [])
       }
     } else {
-      setError(data.error);
+      setError(data.error)
     }
-    setIsSavingColumns(false);
-  };
+    setIsSavingColumns(false)
+  }
 
   if (loading) {
     return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin" /></div>
@@ -144,10 +151,10 @@ export default function StorageSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {connectedBucket && (
-            <div className="flex items-center justify-between">
-              <p>Connected to bucket: <strong>{connectedBucket}</strong></p>
-              <Button onClick={handleDisconnect} variant="destructive" disabled={isDisconnecting}>
-                {isDisconnecting ? <Loader2 className="animate-spin mr-2" /> : null} Disconnect
+            <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-md">
+              <p>Connected to bucket: <strong className="text-green-600 dark:text-green-400">{connectedBucket}</strong></p>
+              <Button onClick={handleDisconnect} variant="destructive" disabled={isDisconnecting} size="sm">
+                {isDisconnecting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Disconnect
               </Button>
             </div>
           )}
@@ -155,10 +162,11 @@ export default function StorageSettingsPage() {
             <Input 
               placeholder="Enter bucket name"
               value={bucketInput} 
-              onChange={(e) => setBucketInput(e.target.value)} 
+              onChange={(e) => setBucketInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleConnect()}
             />
             <Button onClick={handleConnect} disabled={isConnecting || !bucketInput}>
-              {isConnecting ? <Loader2 className="animate-spin mr-2" /> : null} {connectedBucket ? 'Switch' : 'Connect'}
+              {isConnecting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} {connectedBucket ? 'Switch' : 'Connect'}
             </Button>
           </div>
         </CardContent>
@@ -167,36 +175,47 @@ export default function StorageSettingsPage() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Storage Columns</CardTitle>
-          <CardDescription>Specify the columns from your storage that the chat can use.</CardDescription>
+          <CardDescription>Specify which table columns contain file links from your storage bucket. These columns will display a "View" button instead of raw links.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-4">
             <Input 
-              placeholder="Add column name" 
+              placeholder="Add column name (e.g., document, file_url)" 
               value={newColumnName} 
-              onChange={(e) => setNewColumnName(e.target.value)} 
+              onChange={(e) => setNewColumnName(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddColumn()}
             />
-            <Button onClick={handleAddColumn}><Plus className="h-4 w-4" /></Button>
+            <Button onClick={handleAddColumn} size="sm"><Plus className="h-4 w-4" /></Button>
           </div>
-          <div className="space-y-2 min-h-[40px] p-2 bg-muted rounded-md">
+          <div className="space-y-2 min-h-[40px] p-3 bg-muted rounded-md border border-border/50">
             {storageColumns.length > 0 ? (
               storageColumns.map((col, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <span>{col}</span>
-                  <Button onClick={() => handleRemoveColumn(col)} variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                <div key={index} className="flex items-center justify-between bg-background/50 p-2 rounded">
+                  <span className="font-mono text-sm">{col}</span>
+                  <Button 
+                    onClick={() => handleRemoveColumn(col)} 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">No columns specified.</p>
+              <p className="text-sm text-muted-foreground">No columns specified. Add columns to enable file preview functionality.</p>
             )}
           </div>
           <Button 
             onClick={handleSaveChanges} 
-            className="mt-4" 
+            className="mt-4 w-full" 
             disabled={isSavingColumns || !connectedBucket}
           >
-            {isSavingColumns ? <Loader2 className="animate-spin mr-2" /> : null} Save Changes
+            {isSavingColumns ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Save Changes
           </Button>
+          {!connectedBucket && (
+            <p className="text-xs text-muted-foreground mt-2">Connect a storage bucket first to save column settings.</p>
+          )}
         </CardContent>
       </Card>
     </div>
