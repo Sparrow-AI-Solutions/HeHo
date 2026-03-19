@@ -13,15 +13,20 @@ export default function StorageSettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   
+  // General saving state
+  const [isSaving, setIsSaving] = useState(false)
+
   // Storage Bucket States
   const [connectedBucket, setConnectedBucket] = useState("")
   const [bucketInput, setBucketInput] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   
-  // Pantry ID State
+  // Pantry ID States
   const [pantryId, setPantryId] = useState("")
-  const [isSavingPantry, setIsSavingPantry] = useState(false)
+  const [pantryInput, setPantryInput] = useState("")
+  const [isConnectingPantry, setIsConnectingPantry] = useState(false)
+  const [isDisconnectingPantry, setIsDisconnectingPantry] = useState(false)
 
   // Storage Columns States
   const [storageColumns, setStorageColumns] = useState<string[]>([])
@@ -30,6 +35,7 @@ export default function StorageSettingsPage() {
 
   const supabase = createClient()
 
+  // Fetch initial user data
   useEffect(() => {
     const fetchUserData = async () => {
       setLoading(true)
@@ -54,53 +60,75 @@ export default function StorageSettingsPage() {
     fetchUserData()
   }, [supabase])
 
-  const handleConnect = async () => {
+  const handleApiCall = async (apiRoute: string, method: string, body: object, successMessage: string) => {
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(apiRoute, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+      setSuccess(successMessage)
+      return data
+    } catch (err: any) {
+      setError(err.message)
+      return null
+    }
+  }
+
+  // --- Storage Bucket Handlers ---
+  const handleConnectBucket = async () => {
     if (!bucketInput) {
       setError("Please enter a bucket name.")
       return
     }
     setIsConnecting(true)
-    setError(null)
-    setSuccess(null)
-
-    const response = await fetch('/api/database/connect-storage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bucketName: bucketInput }),
-    })
-    const data = await response.json()
-
-    if (response.ok) {
-      setSuccess(data.message)
-      if (data.data) {
-        setConnectedBucket(data.data.storage_bucket || "")
-        setBucketInput("")
-      }
-    } else {
-      setError(data.error)
+    const data = await handleApiCall('/api/database/connect-storage', 'POST', { bucketName: bucketInput }, 'Storage bucket connected!')
+    if (data && data.data) {
+      setConnectedBucket(data.data.storage_bucket || "")
+      setBucketInput("")
     }
     setIsConnecting(false)
   }
 
-  const handleDisconnect = async () => {
+  const handleDisconnectBucket = async () => {
     setIsDisconnecting(true)
-    setError(null)
-    setSuccess(null)
-    const response = await fetch('/api/database/connect-storage', {
-      method: 'DELETE',
-    })
-    const data = await response.json()
-
-    if (response.ok) {
+    const data = await handleApiCall('/api/database/connect-storage', 'DELETE', {}, 'Storage bucket disconnected!')
+    if (data) {
       setConnectedBucket("")
       setStorageColumns([])
-      setSuccess(data.message)
-    } else {
-      setError(data.error)
     }
     setIsDisconnecting(false)
   }
+  
+  // --- Pantry Handlers ---
+  const handleConnectPantry = async () => {
+    if (!pantryInput) {
+        setError("Please enter a Pantry ID.")
+        return
+    }
+    setIsConnectingPantry(true)
+    const data = await handleApiCall('/api/pantry/connect', 'POST', { pantryId: pantryInput }, 'Pantry successfully connected!')
+    if(data && data.data) {
+        setPantryId(data.data.pantry_id || "")
+        setPantryInput("")
+    }
+    setIsConnectingPantry(false)
+  }
 
+  const handleDisconnectPantry = async () => {
+    setIsDisconnectingPantry(true)
+    const data = await handleApiCall('/api/pantry/connect', 'DELETE', {}, 'Pantry successfully disconnected!')
+    if(data) {
+        setPantryId("")
+    }
+    setIsDisconnectingPantry(false)
+  }
+
+  // --- Storage Columns Handlers ---
   const handleAddColumn = () => {
     const trimmedName = newColumnName.trim()
     if (trimmedName && !storageColumns.includes(trimmedName)) {
@@ -113,52 +141,19 @@ export default function StorageSettingsPage() {
     setStorageColumns(storageColumns.filter(col => col !== columnToRemove))
   }
 
-  const handleSavePantryId = async () => {
-    setIsSavingPantry(true)
-    setError(null)
-    setSuccess(null)
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setError("You must be logged in to save settings.")
-      setIsSavingPantry(false)
-      return
-    }
-
-    const { error: userUpdateError } = await supabase
-      .from('users')
-      .update({ pantry_id: pantryId })
-      .eq('id', user.id)
-
-    if (userUpdateError) {
-      setError(`Failed to save Pantry ID: ${userUpdateError.message}`)
-    } else {
-      setSuccess("Pantry ID saved successfully!")
-    }
-    setIsSavingPantry(false)
-  }
-
   const handleSaveStorageColumns = async () => {
     setIsSavingColumns(true)
-    setError(null)
-    setSuccess(null)
-
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      setError("You must be logged in to save settings.")
-      setIsSavingColumns(false)
-      return
+        setError("You must be logged in.")
+        setIsSavingColumns(false)
+        return
     }
-    
-    const { error: userUpdateError } = await supabase
-      .from('users')
-      .update({ storage_columns: storageColumns })
-      .eq('id', user.id)
-
-    if (userUpdateError) {
-      setError(`Failed to save storage columns: ${userUpdateError.message}`)
+    const { error: updateError } = await supabase.from('users').update({ storage_columns: storageColumns }).eq('id', user.id)
+    if(updateError) {
+        setError(updateError.message)
     } else {
-      setSuccess("Storage columns saved successfully!")
+        setSuccess("Storage columns saved successfully!")
     }
     setIsSavingColumns(false)
   }
@@ -174,6 +169,7 @@ export default function StorageSettingsPage() {
       {error && <Alert variant="destructive" className="mb-4"><XCircle className="h-4 w-4 mr-2" /><AlertDescription>{error}</AlertDescription></Alert>}
       {success && <Alert className="mb-4 border-green-500/50 text-green-700"><CheckCircle className="h-4 w-4 mr-2 text-green-600" /><AlertDescription>{success}</AlertDescription></Alert>}
 
+      {/* --- SUPABASE BUCKET --- */}
       <Card>
         <CardHeader>
           <CardTitle>Supabase Storage Bucket</CardTitle>
@@ -183,7 +179,7 @@ export default function StorageSettingsPage() {
           {connectedBucket && (
             <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-md">
               <p>Connected to bucket: <strong className="text-green-600 dark:text-green-400">{connectedBucket}</strong></p>
-              <Button onClick={handleDisconnect} variant="destructive" disabled={isDisconnecting} size="sm">
+              <Button onClick={handleDisconnectBucket} variant="destructive" disabled={isDisconnecting} size="sm">
                 {isDisconnecting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Disconnect
               </Button>
             </div>
@@ -193,34 +189,45 @@ export default function StorageSettingsPage() {
               placeholder="Enter bucket name"
               value={bucketInput} 
               onChange={(e) => setBucketInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleConnect()}
+              onKeyPress={(e) => e.key === 'Enter' && handleConnectBucket()}
             />
-            <Button onClick={handleConnect} disabled={isConnecting || !bucketInput}>
+            <Button onClick={handleConnectBucket} disabled={isConnecting || !bucketInput}>
               {isConnecting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} {connectedBucket ? 'Switch' : 'Connect'}
             </Button>
           </div>
         </CardContent>
       </Card>
 
+      {/* --- PANTRY INTEGRATION --- */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Pantry Integration</CardTitle>
           <CardDescription>Connect your Pantry JSON storage to sync data.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2">
-            <Input 
-                placeholder="Enter your Pantry ID"
-                value={pantryId}
-                onChange={(e) => setPantryId(e.target.value)}
-              />
-            <Button onClick={handleSavePantryId} disabled={isSavingPantry}>
-              {isSavingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Save
-            </Button>
-          </div>
+        <CardContent className="space-y-4">
+            {pantryId && (
+                <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-md">
+                    <p>Connected to Pantry: <strong className="text-green-600 dark:text-green-400 truncate">{pantryId}</strong></p>
+                    <Button onClick={handleDisconnectPantry} variant="destructive" disabled={isDisconnectingPantry} size="sm">
+                        {isDisconnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Disconnect
+                    </Button>
+                </div>
+            )}
+            <div className="flex items-center gap-2">
+                <Input 
+                    placeholder="Enter your Pantry ID"
+                    value={pantryInput}
+                    onChange={(e) => setPantryInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleConnectPantry()}
+                />
+                <Button onClick={handleConnectPantry} disabled={isConnectingPantry || !pantryInput}>
+                    {isConnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} {pantryId ? 'Switch' : 'Connect'}
+                </Button>
+            </div>
         </CardContent>
       </Card>
 
+      {/* --- STORAGE COLUMNS --- */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Storage Columns</CardTitle>
@@ -229,14 +236,14 @@ export default function StorageSettingsPage() {
         <CardContent>
           <div className="flex items-center gap-2 mb-4">
             <Input 
-              placeholder="Add column name (e.g., 'document', 'file_url')" 
+              placeholder="Add column name (e.g., 'document')" 
               value={newColumnName} 
               onChange={(e) => setNewColumnName(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddColumn()}
             />
             <Button onClick={handleAddColumn} size="icon" className="h-9 w-9 flex-shrink-0"><Plus className="h-4 w-4" /></Button>
           </div>
-          <div className="space-y-2 min-h-[40px] p-3 bg-muted rounded-md border border-border/50">
+          <div className="space-y-2 min-h-[80px] p-3 bg-muted rounded-md border border-border/50">
             {storageColumns.length > 0 ? (
               storageColumns.map((col, index) => (
                 <div key={index} className="flex items-center justify-between bg-background/50 p-2 rounded-md shadow-sm">
@@ -252,7 +259,7 @@ export default function StorageSettingsPage() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground p-2">No columns specified. Add columns to enable file preview functionality.</p>
+              <p className="text-sm text-muted-foreground p-2">No columns specified.</p>
             )}
           </div>
           <Button 
@@ -262,8 +269,12 @@ export default function StorageSettingsPage() {
           >
             {isSavingColumns ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Save Column Changes
           </Button>
+           {!connectedBucket && (
+            <p className="text-xs text-muted-foreground mt-2 text-center">Connect a storage bucket to save column settings.</p>
+          )}
         </CardContent>
       </Card>
+
     </div>
   )
 }
