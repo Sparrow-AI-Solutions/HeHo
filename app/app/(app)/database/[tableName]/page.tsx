@@ -126,13 +126,24 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
     }
   };
 
-  const handleDownload = () => {
-    const a = document.createElement('a');
-    a.href = fileUrl;
-    a.download = fileUrl.split('/').pop() || 'download';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error('Failed to download file');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileUrl.split('/').pop() || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed:', err);
+      setPreviewError('Failed to download file');
+    }
   };
 
   const handleSaveNewUrl = () => {
