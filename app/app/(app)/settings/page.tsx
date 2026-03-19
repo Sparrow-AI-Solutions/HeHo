@@ -50,7 +50,9 @@ export default function SettingsPage() {
         setSupabaseKey(data.supabase_key_encrypted || "")
         setHehoApiKey(data.heho_api_key || "")
         setStorageBucket(data.storage_bucket || "")
-        setStorageColumns(data.storage_columns || [])
+        // Ensure storage_columns is always an array
+        const cols = data.storage_columns
+        setStorageColumns(Array.isArray(cols) ? cols : [])
       }
       setLoading(false)
     }
@@ -151,14 +153,16 @@ export default function SettingsPage() {
   }
 
   const handleAddColumn = () => {
-    if (newColumnName.trim() && !storageColumns.includes(newColumnName.trim())) {
+    if (newColumnName.trim() && Array.isArray(storageColumns) && !storageColumns.includes(newColumnName.trim())) {
       setStorageColumns([...storageColumns, newColumnName.trim()])
       setNewColumnName("")
     }
   }
 
   const handleRemoveColumn = (columnToRemove: string) => {
-    setStorageColumns(storageColumns.filter(col => col !== columnToRemove))
+    if (Array.isArray(storageColumns)) {
+      setStorageColumns(storageColumns.filter(col => col !== columnToRemove))
+    }
   }
 
   const handleSaveColumns = async () => {
@@ -340,7 +344,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2 p-3 bg-muted/50 rounded-md border border-border/30 min-h-[40px]">
-                  {storageColumns.length > 0 ? (
+                  {Array.isArray(storageColumns) && storageColumns.length > 0 ? (
                     storageColumns.map((col, index) => (
                       <div key={index} className="flex items-center justify-between bg-background/50 p-2 rounded text-sm">
                         <span className="font-mono">{col}</span>
