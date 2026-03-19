@@ -42,21 +42,15 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
   const [newFileUrl, setNewFileUrl] = useState(fileUrl);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState(false);
-  const fileInputRef = useCallback((input: HTMLInputElement | null) => {
-    if (input) {
-      input.addEventListener('change', (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-          onUpload(file);
-        }
-      });
-    }
-  }, [onUpload]);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setNewFileUrl(fileUrl);
     setPreviewError(null);
     setUploadMode(false);
+    setUploadedFileUrl(null);
   }, [fileUrl, isOpen]);
 
   if (!isOpen) return null;
@@ -152,6 +146,39 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
     }
   };
 
+  const handleFileSelect = (file: File) => {
+    onUpload(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFileSelect(files[0]);
+    }
+  };
+
+  const handleSaveUploadedFile = () => {
+    if (uploadedFileUrl) {
+      onSave(uploadedFileUrl);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -209,13 +236,27 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
             {uploadMode ? (
               // File Upload Mode
               <div className="space-y-3">
-                <div className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-6 text-center">
+                <div 
+                  className={cn(
+                    "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
+                    isDragging 
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50" 
+                      : "border-blue-300 dark:border-blue-700"
+                  )}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <input
                     ref={fileInputRef}
                     type="file"
                     id="file-upload"
                     className="hidden"
                     disabled={isUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileSelect(file);
+                    }}
                   />
                   <label 
                     htmlFor="file-upload" 
@@ -223,7 +264,7 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
                   >
                     <Upload className="h-8 w-8 mx-auto mb-2 text-blue-500" />
                     <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                      {isUploading ? 'Uploading...' : 'Click to upload a new file'}
+                      {isUploading ? 'Uploading...' : 'Drag and drop or click to upload'}
                     </p>
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                       File will be saved to: <strong>{bucketName}</strong>
@@ -231,8 +272,21 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
                   </label>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Select a file to upload. It will replace the current file in your storage bucket.
+                  Select a file to upload. You can drag and drop files here or click to browse.
                 </p>
+
+                {/* Show uploaded file URL if available */}
+                {uploadedFileUrl && (
+                  <div className="border rounded-lg p-3 bg-green-50/50 dark:bg-green-950/30">
+                    <p className="text-xs font-semibold text-green-700 dark:text-green-300 mb-2">✓ FILE UPLOADED</p>
+                    <div className="p-2 bg-background rounded text-xs break-all font-mono text-muted-foreground max-h-20 overflow-auto">
+                      {uploadedFileUrl}
+                    </div>
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                      Click "Save URL" button below to save this file link to your database.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               // URL Edit Mode
@@ -257,7 +311,16 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
             <Download className="h-4 w-4" />
             Download
           </Button>
-          {!uploadMode && (
+          {uploadMode && uploadedFileUrl ? (
+            <Button 
+              onClick={handleSaveUploadedFile}
+              disabled={isSaving || isUploading}
+              className="gap-2"
+            >
+              {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+              Save URL
+            </Button>
+          ) : !uploadMode && (
             <Button 
               onClick={handleSaveNewUrl} 
               disabled={isSaving || !newFileUrl.trim() || newFileUrl === fileUrl}
@@ -367,6 +430,7 @@ export default function TableViewPage() {
   const [selectedColumn, setSelectedColumn] = useState("");
   const [isSavingFile, setIsSavingFile] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [pendingUploadUrl, setPendingUploadUrl] = useState<string | null>(null);
 
   // Storage columns state
   const [storageColumns, setStorageColumns] = useState<string[]>([]);
@@ -508,6 +572,7 @@ export default function TableViewPage() {
       setSelectedFileUrl(fileUrl);
       setSelectedRowId(row.id);
       setSelectedColumn(column);
+      setPendingUploadUrl(null);
       setIsModalOpen(true);
     }
   };
@@ -521,6 +586,7 @@ export default function TableViewPage() {
         updatedData: { [selectedColumn]: newUrl }
       });
       setSelectedFileUrl(newUrl);
+      setPendingUploadUrl(null);
       setSuccess('File link updated successfully');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -552,14 +618,10 @@ export default function TableViewPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to upload file');
 
-      await handleApiAction('UPDATE_ROW', {
-        rowId: selectedRowId,
-        updatedData: { [selectedColumn]: result.fileUrl }
-      });
-
-      setSelectedFileUrl(result.fileUrl);
-      setSuccess('File uploaded and saved successfully');
-      setTimeout(() => setSuccess(null), 3000);
+      // Store the uploaded URL but don't save to database yet
+      setPendingUploadUrl(result.fileUrl);
+      setSuccess('File uploaded successfully. Click "Save URL" to save it to your database.');
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err: any) {
       setError(err.message || 'Failed to upload file');
     } finally {
