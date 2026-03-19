@@ -278,51 +278,56 @@ interface CellEditorProps {
   value: any;
   onSave: (value: any) => void;
   onCancel: () => void;
-  position: any; // Expects a DOMRect object from getBoundingClientRect()
+  position: DOMRect;
 }
 
 function CellEditor({ value, onSave, onCancel, position }: CellEditorProps) {
   const [currentValue, setCurrentValue] = useState(value === null ? '' : String(value));
   const editorRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 });
 
   useEffect(() => {
-    if (editorRef.current) {
-      const editorRect = editorRef.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      const windowWidth = window.innerWidth;
-      const margin = 16;
+    if (!editorRef.current) return;
 
-      let top = position.bottom;
-      let left = position.left;
+    const windowHeight = window.innerHeight;
+    const windowWidth = window.innerWidth;
+    const margin = 16;
 
-      // Adjust top position if it overflows from bottom
-      if (top + editorRect.height > windowHeight - margin) {
-        top = position.top - editorRect.height;
-      }
-      
-      // Ensure it doesn't go off-screen from the top
-      if (top < margin) {
-        top = margin;
-      }
+    const editorWidth = Math.max(position.width, 320);
+    const editorMaxHeight = Math.min(windowHeight - margin * 2, 350);
 
-      // Adjust left position if it overflows from right
-      if (left + editorRect.width > windowWidth - margin) {
-        left = windowWidth - editorRect.width - margin;
-      }
+    let top: number | undefined;
+    let bottom: number | undefined;
+    let left = position.left;
 
-      // Ensure it doesn't go off-screen from the left
-      if (left < margin) {
-        left = margin;
-      }
-
-      setStyle({
-        top,
-        left,
-        width: Math.max(position.width, 300),
-        opacity: 1,
-      });
+    if (left + editorWidth > windowWidth - margin) {
+      left = windowWidth - editorWidth - margin;
     }
+    if (left < margin) {
+      left = margin;
+    }
+
+    const spaceBelow = windowHeight - position.bottom - margin;
+    const spaceAbove = position.top - margin;
+    
+    // Minimum height of editor is around 150px
+    if (spaceBelow < 150 && spaceAbove > spaceBelow) {
+      bottom = windowHeight - position.top;
+    } else {
+      top = position.bottom;
+    }
+
+    setStyle({
+      top,
+      bottom,
+      left,
+      width: editorWidth,
+      maxHeight: editorMaxHeight,
+      opacity: 1,
+    });
+    
+    textareaRef.current?.focus();
   }, [position]);
 
   useEffect(() => {
@@ -347,26 +352,28 @@ function CellEditor({ value, onSave, onCancel, position }: CellEditorProps) {
   return (
     <div
       ref={editorRef}
-      className="fixed z-[100] bg-background border rounded-lg shadow-xl p-3 flex flex-col gap-3 min-w-[300px] transition-opacity"
+      className="fixed z-[100] bg-background border rounded-lg shadow-xl flex flex-col transition-opacity"
       style={style}
     >
-      <Textarea
-        autoFocus
-        value={currentValue}
-        onChange={(e) => setCurrentValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        className="min-h-[120px] font-mono text-sm resize-y"
-      />
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => onSave(currentValue)} className="gap-1.5 h-8">
-            <CornerDownLeft className="h-3.5 w-3.5" />
-            Save changes
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onCancel} className="gap-1.5 h-8 text-muted-foreground">
-            <span className="text-[10px] border rounded px-1 py-0.5">Esc</span>
-            Cancel changes
-          </Button>
+      <div className="p-3 flex-1 flex flex-col gap-3 min-h-0">
+        <Textarea
+          ref={textareaRef}
+          value={currentValue}
+          onChange={(e) => setCurrentValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 w-full h-full font-mono text-sm resize-none border-0 focus:ring-0 p-0 bg-transparent overflow-y-auto"
+        />
+        <div className="flex items-center justify-between gap-2 flex-shrink-0">
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => onSave(currentValue)} className="gap-1.5 h-8">
+              <CornerDownLeft className="h-3.5 w-3.5" />
+              Save changes
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onCancel} className="gap-1.5 h-8 text-muted-foreground">
+              <span className="text-[10px] border rounded px-1 py-0.5">Esc</span>
+              Cancel changes
+            </Button>
+          </div>
         </div>
       </div>
     </div>
