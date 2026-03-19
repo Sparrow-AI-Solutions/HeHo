@@ -13,21 +13,28 @@ import Link from "next/link"
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  // Service States
   const [openRouterKey, setOpenRouterKey] = useState("")
   const [supabaseUrl, setSupabaseUrl] = useState("")
   const [supabaseKey, setSupabaseKey] = useState("")
   const [storageBucket, setStorageBucket] = useState("")
   const [storageColumns, setStorageColumns] = useState<string[]>([])
   const [newColumnName, setNewColumnName] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  
   const [hehoApiKey, setHehoApiKey] = useState("");
+  const [pantryId, setPantryId] = useState("")
+  const [pantryInput, setPantryInput] = useState("")
+
+  // Loading States
+  const [saving, setSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isSavingColumns, setIsSavingColumns] = useState(false);
+  const [isConnectingPantry, setIsConnectingPantry] = useState(false)
+  const [isDisconnectingPantry, setIsDisconnectingPantry] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -50,7 +57,7 @@ export default function SettingsPage() {
         setSupabaseKey(data.supabase_key_encrypted || "")
         setHehoApiKey(data.heho_api_key || "")
         setStorageBucket(data.storage_bucket || "")
-        // Ensure storage_columns is always an array
+        setPantryId(data.pantry_id || "")
         const cols = data.storage_columns
         setStorageColumns(Array.isArray(cols) ? cols : [])
       }
@@ -60,11 +67,15 @@ export default function SettingsPage() {
     loadUserAndSettings()
   }, [router, supabase])
 
+  const clearMessages = () => {
+    setError(null)
+    setSuccess(null)
+  }
+
   const handleSaveOpenRouterKey = async () => {
     if (!user) return
     setSaving(true)
-    setError(null)
-    setSuccess(null)
+    clearMessages()
     try {
       const { error } = await supabase
         .from("users")
@@ -79,11 +90,12 @@ export default function SettingsPage() {
     }
   }
 
+  // ... (Heho API Key handlers remain the same) 
+
   const handleGenerateHehoApiKey = async () => {
     if (!user) return;
     setIsGenerating(true);
-    setError(null);
-    setSuccess(null);
+    clearMessages()
     try {
       const randomBytes = new Uint8Array(12);
       window.crypto.getRandomValues(randomBytes);
@@ -110,8 +122,7 @@ export default function SettingsPage() {
     if (!user) return;
     if (!confirm("Are you sure you want to delete your Heho API key? This action is irreversible.")) return;
     setIsDeleting(true);
-    setError(null);
-    setSuccess(null);
+    clearMessages()
     try {
       const { error: updateError } = await supabase
         .from('users')
@@ -128,12 +139,55 @@ export default function SettingsPage() {
       setIsDeleting(false);
     }
   }
+  
+  // --- Pantry Handlers ---
+  const handleConnectPantry = async () => {
+      if (!pantryInput) {
+          setError("Please enter a Pantry ID.")
+          return
+      }
+      setIsConnectingPantry(true)
+      clearMessages()
+      try {
+        const response = await fetch('/api/pantry/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pantryId: pantryInput })
+        })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error)
+        setSuccess(data.message)
+        if (data.data) {
+            setPantryId(data.data.pantry_id || "")
+            setPantryInput("")
+        }
+      } catch (err: any) {
+        setError(err.message)
+      }
+      setIsConnectingPantry(false)
+  }
+
+  const handleDisconnectPantry = async () => {
+      setIsDisconnectingPantry(true)
+      clearMessages()
+      try {
+        const response = await fetch('/api/pantry/connect', { method: 'DELETE' })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error)
+        setSuccess(data.message)
+        setPantryId("")
+      } catch (err: any) {
+        setError(err.message)
+      }
+      setIsDisconnectingPantry(false)
+  }
+
+  // ... (Storage bucket handlers remain the same)
 
   const handleConnectBucket = async () => {
     if (!user) return;
     setSaving(true);
-    setError(null);
-    setSuccess(null);
+    clearMessages()
     try {
       const response = await fetch("/api/database/connect-storage", {
         method: "POST",
@@ -172,8 +226,7 @@ export default function SettingsPage() {
     }
 
     setIsSavingColumns(true)
-    setError(null)
-    setSuccess(null)
+    clearMessages()
     
     try {
       const response = await fetch("/api/database/connect-storage", {
@@ -206,11 +259,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
-      </div>
-    )
+    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>
   }
 
   return (
@@ -276,6 +325,36 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </CardContent>
+          </Card>
+
+          {/* --- PANTRY INTEGRATION --- */}
+          <Card className="border-border/50 bg-card/50">
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" /> Pantry Integration</CardTitle>
+                  <CardDescription>Connect your Pantry JSON storage to sync data.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  {pantryId && (
+                      <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-md">
+                          <p className="text-sm">Connected to Pantry: <strong className="text-green-400 truncate">{pantryId}</strong></p>
+                          <Button onClick={handleDisconnectPantry} variant="destructive" disabled={isDisconnectingPantry} size="sm">
+                              {isDisconnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Disconnect
+                          </Button>
+                      </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                      <Input 
+                          placeholder="Enter your Pantry ID"
+                          value={pantryInput}
+                          onChange={(e) => setPantryInput(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleConnectPantry()}
+                          className="bg-background/50"
+                      />
+                      <Button onClick={handleConnectPantry} disabled={isConnectingPantry || !pantryInput} className="shrink-0">
+                          {isConnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} {pantryId ? 'Switch' : 'Connect'}
+                      </Button>
+                  </div>
+              </CardContent>
           </Card>
 
           <Card className="border-border/50 bg-card/50">
