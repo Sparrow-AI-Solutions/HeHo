@@ -1,15 +1,17 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
-  Loader2, Edit, PlusCircle, Trash2, Save, X, ArrowLeft, Eye, Download, Upload
+  Loader2, Edit, PlusCircle, Trash2, Save, X, ArrowLeft, Eye, Download, Upload, CornerDownLeft, Maximize2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import Link from 'next/link'
+import { cn } from '@/lib/utils'
 
 interface TableData {
   columns: string[];
@@ -240,9 +242,6 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
 
         {/* Footer */}
         <div className="sticky bottom-0 flex gap-2 p-4 border-t bg-background/95 backdrop-blur justify-end flex-wrap">
-          <Button variant="outline" onClick={onClose} disabled={isSaving || isUploading}>
-            Cancel
-          </Button>
           <Button variant="outline" onClick={handleDownload} disabled={isSaving || isUploading} className="gap-2">
             <Download className="h-4 w-4" />
             Download
@@ -263,6 +262,81 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
   );
 }
 
+// Smart Cell Editor Component
+interface CellEditorProps {
+  value: any;
+  onSave: (value: any) => void;
+  onCancel: () => void;
+  onSetNull: () => void;
+  position: { top: number; left: number; width: number };
+}
+
+function CellEditor({ value, onSave, onCancel, onSetNull, position }: CellEditorProps) {
+  const [currentValue, setCurrentValue] = useState(value === null ? '' : String(value));
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editorRef.current && !editorRef.current.contains(event.target as Node)) {
+        onCancel();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onCancel]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      onSave(currentValue);
+    } else if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <div 
+      ref={editorRef}
+      className="fixed z-[100] bg-background border rounded-lg shadow-xl p-3 flex flex-col gap-3 min-w-[300px]"
+      style={{ 
+        top: position.top, 
+        left: position.left,
+        width: Math.max(position.width, 300)
+      }}
+    >
+      <Textarea
+        autoFocus
+        value={currentValue}
+        onChange={(e) => setCurrentValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="min-h-[120px] font-mono text-sm resize-y"
+      />
+      
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => onSave(currentValue)} className="gap-1.5 h-8">
+            <CornerDownLeft className="h-3.5 w-3.5" />
+            Save changes
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onCancel} className="gap-1.5 h-8 text-muted-foreground">
+            <span className="text-[10px] border rounded px-1 py-0.5">Esc</span>
+            Cancel changes
+          </Button>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={onSetNull} className="h-8">
+            Set to NULL
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TableViewPage() {
   const params = useParams()
   const tableName = decodeURIComponent(params.tableName as string)
@@ -271,9 +345,9 @@ export default function TableViewPage() {
   const [error, setError] = useState<string | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
 
-  // States for inline editing
-  const [editingRowId, setEditingRowId] = useState<any>(null);
-  const [editingRowData, setEditingRowData] = useState<Record<string, any> | null>(null);
+  // States for smart cell editing
+  const [activeCell, setActiveCell] = useState<{ rowId: any; col: string; position: any } | null>(null);
+  const [isSavingCell, setIsSavingCell] = useState(false);
 
   // States for file preview modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -309,7 +383,6 @@ export default function TableViewPage() {
     }
   }, [tableName])
 
-  // Fetch storage columns and bucket from user settings
   const fetchStorageConfig = useCallback(async () => {
     try {
       const response = await fetch('/api/database/get-storage-columns', {
@@ -333,11 +406,6 @@ export default function TableViewPage() {
     }
   }, [tableName, fetchData, fetchStorageConfig])
 
-  const debouncedRefetch = useCallback(debounce(() => { 
-    setEditingRowId(null);
-    fetchData();
-  }, 300), [fetchData]);
-
   const handleApiAction = async (action: string, payload: any) => {
     setError(null);
     try {
@@ -348,7 +416,17 @@ export default function TableViewPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
-      debouncedRefetch();
+      
+      // Update local state instead of full refetch for better UX
+      if (action === 'UPDATE_ROW') {
+        setTableData(prev => ({
+          ...prev,
+          data: prev.data.map(row => row.id === payload.rowId ? { ...row, ...payload.updatedData } : row)
+        }));
+      } else {
+        fetchData();
+      }
+      
       return result;
     } catch (err: any) {
       setError(err.message);
@@ -360,26 +438,56 @@ export default function TableViewPage() {
     await handleApiAction('ADD_ROW', { newRow: {} });
   }
 
-  const handleEditRow = (row: Record<string, any>) => {
-    setEditingRowId(row.id);
-    setEditingRowData({ ...row });
-    setError(null);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingRowId(null);
-    setEditingRowData(null);
-    setError(null);
-  }
-
-  const handleSaveEdit = async () => {
-    if (!editingRowData) return;
-    await handleApiAction('UPDATE_ROW', { rowId: editingRowId, updatedData: editingRowData });
-  }
-
   const handleDeleteRow = async (rowId: any) => {
     if (confirm('Are you sure you want to delete this row?')) {
       await handleApiAction('DELETE_ROW', { rowId });
+    }
+  };
+
+  const handleCellClick = (e: React.MouseEvent, rowId: any, col: string) => {
+    if (!isEditMode || col === 'id' || col === 'created_at') return;
+    
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setActiveCell({
+      rowId,
+      col,
+      position: {
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      }
+    });
+  };
+
+  const handleSaveCell = async (newValue: any) => {
+    if (!activeCell) return;
+    setIsSavingCell(true);
+    try {
+      await handleApiAction('UPDATE_ROW', {
+        rowId: activeCell.rowId,
+        updatedData: { [activeCell.col]: newValue }
+      });
+      setActiveCell(null);
+    } catch (err) {
+      console.error('Failed to save cell:', err);
+    } finally {
+      setIsSavingCell(false);
+    }
+  };
+
+  const handleSetNull = async () => {
+    if (!activeCell) return;
+    setIsSavingCell(true);
+    try {
+      await handleApiAction('UPDATE_ROW', {
+        rowId: activeCell.rowId,
+        updatedData: { [activeCell.col]: null }
+      });
+      setActiveCell(null);
+    } catch (err) {
+      console.error('Failed to set NULL:', err);
+    } finally {
+      setIsSavingCell(false);
     }
   };
 
@@ -395,7 +503,6 @@ export default function TableViewPage() {
 
   const handleSaveFileUrl = async (newUrl: string) => {
     if (!selectedRowId || !selectedColumn) return;
-    
     setIsSavingFile(true);
     try {
       await handleApiAction('UPDATE_ROW', {
@@ -414,10 +521,8 @@ export default function TableViewPage() {
 
   const handleUploadFile = async (file: File) => {
     if (!selectedRowId || !selectedColumn || !storageBucket) return;
-
     setIsUploadingFile(true);
     try {
-      // Generate a unique file path
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 8);
       const fileName = `${timestamp}-${randomStr}-${file.name}`;
@@ -434,12 +539,8 @@ export default function TableViewPage() {
       });
 
       const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to upload file');
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to upload file');
-      }
-
-      // Save the new file URL to the database
       await handleApiAction('UPDATE_ROW', {
         rowId: selectedRowId,
         updatedData: { [selectedColumn]: result.fileUrl }
@@ -455,9 +556,7 @@ export default function TableViewPage() {
     }
   };
 
-  const isFileColumn = (column: string): boolean => {
-    return storageColumns.includes(column);
-  };
+  const isFileColumn = (column: string): boolean => storageColumns.includes(column);
 
   const isUrl = (value: any): boolean => {
     if (typeof value !== 'string') return false;
@@ -469,34 +568,21 @@ export default function TableViewPage() {
     }
   };
 
-  const renderCell = (row: Record<string, any>, col: string) => {
-    const isEditingThisRow = editingRowId === row.id;
-    const data = isEditingThisRow ? editingRowData : row;
-
-    if (isEditingThisRow && col !== 'id' && col !== 'created_at') {
-      return (
-        <Input
-          value={editingRowData?.[col] || ''}
-          onChange={(e) => setEditingRowData(prev => prev ? { ...prev, [col]: e.target.value } : null)}
-          className="bg-background/80 h-8 text-xs"
-        />
-      )
-    }
-
-    if (data[col] === null) return <span className="text-muted-foreground">NULL</span>;
-    if (typeof data[col] === 'object') return <pre className="text-xs max-w-xs truncate">{JSON.stringify(data[col])}</pre>;
+  const renderCellContent = (row: Record<string, any>, col: string) => {
+    const value = row[col];
     
-    const cellValue = String(data[col]);
-    if (cellValue.trim() === "") return <span className="text-muted-foreground/50 italic">‹empty›</span>
-
-    // Check if this is a storage column with a URL
-    if (isFileColumn(col) && isUrl(cellValue)) {
+    if (value === null) return <span className="text-muted-foreground italic text-xs">NULL</span>;
+    
+    if (isFileColumn(col) && isUrl(value)) {
       return (
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleOpenFilePreview(row, col)}
-          className="gap-2 h-7 text-xs"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenFilePreview(row, col);
+          }}
+          className="gap-2 h-6 text-[10px] px-2"
         >
           <Eye className="h-3 w-3" />
           View
@@ -504,14 +590,17 @@ export default function TableViewPage() {
       );
     }
 
-    return cellValue;
+    if (typeof value === 'object') return JSON.stringify(value);
+    
+    const strValue = String(value);
+    if (strValue.trim() === "") return <span className="text-muted-foreground/30 italic text-xs">empty</span>;
+    
+    return strValue;
   }
-
-  const isAnythingBeingEdited = editingRowId !== null;
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full mx-auto">
         <div className="mb-6">
           <Button variant="ghost" asChild className="mb-4">
             <Link href="/app/database">
@@ -528,7 +617,7 @@ export default function TableViewPage() {
 
         {isEditMode && (
           <div className="mb-4">
-            <Button onClick={handleAddRow} disabled={isAnythingBeingEdited}>
+            <Button onClick={handleAddRow}>
               <PlusCircle className="h-4 w-4 mr-2"/>Add New Row
             </Button>
           </div>
@@ -540,40 +629,84 @@ export default function TableViewPage() {
           <> 
             {error && <Alert variant="destructive" className="mb-4"><AlertTitle>Action Failed</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
             {success && <Alert className="mb-4 border-green-500/50 bg-green-500/10"><AlertTitle>Success</AlertTitle><AlertDescription>{success}</AlertDescription></Alert>}
-            <div className="border border-border/50 rounded-lg bg-card/50 overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow>{tableData.columns.map(col => <TableHead key={col} className="text-xs sm:text-sm">{col}</TableHead>)}{isEditMode && <TableHead className="text-right min-w-[100px]">Actions</TableHead>}</TableRow></TableHeader>
-                <TableBody>
-                  {tableData.data.length === 0 ? (
-                    <TableRow><TableCell colSpan={tableData.columns.length + (isEditMode ? 1: 0)} className="text-center py-20 text-muted-foreground">This table is empty.</TableCell></TableRow>
-                  ) : (
-                    tableData.data.map((row) => (
-                      <TableRow key={row.id}>
-                        {tableData.columns.map(col => <TableCell className="py-2 text-xs sm:text-sm" key={col}>{renderCell(row, col)}</TableCell>)}
-                        {isEditMode && (
-                          <TableCell className="text-right py-2">
-                            {editingRowId === row.id ? (
-                              <div className="flex gap-2 justify-end">
-                                <Button size="sm" onClick={handleSaveEdit}><Save className="h-4 w-4"/></Button>
-                                <Button size="sm" variant="outline" onClick={handleCancelEdit}><X className="h-4 w-4"/></Button>
-                              </div>
-                            ) : (
-                              <div className="flex gap-2 justify-end">
-                                <Button size="sm" variant="outline" onClick={() => handleEditRow(row)} disabled={isAnythingBeingEdited}><Edit className="h-4 w-4"/></Button>
-                                <Button size="sm" variant="destructive" onClick={() => handleDeleteRow(row.id)} disabled={isAnythingBeingEdited}><Trash2 className="h-4 w-4"/></Button>
-                              </div>
-                            )}
-                          </TableCell>
-                        )}
+            
+            <div className="border border-border/50 rounded-lg bg-card/50 overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table className="border-collapse table-fixed w-full">
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      {tableData.columns.map(col => (
+                        <TableHead 
+                          key={col} 
+                          className="text-xs font-semibold border-r border-border/50 last:border-r-0 h-10 px-3 truncate"
+                          style={{ width: col === 'id' ? '80px' : '200px' }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{col}</span>
+                            <span className="text-[10px] text-muted-foreground font-normal ml-2">text</span>
+                          </div>
+                        </TableHead>
+                      ))}
+                      {isEditMode && <TableHead className="w-[80px] text-center">Actions</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tableData.data.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={tableData.columns.length + (isEditMode ? 1: 0)} className="text-center py-20 text-muted-foreground">
+                          This table is empty.
+                        </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      tableData.data.map((row) => (
+                        <TableRow key={row.id} className="hover:bg-muted/20 transition-colors group">
+                          {tableData.columns.map(col => (
+                            <TableCell 
+                              key={col} 
+                              className={cn(
+                                "py-0 px-0 border-r border-border/50 last:border-r-0 h-10 relative",
+                                isEditMode && col !== 'id' && col !== 'created_at' && "cursor-pointer hover:bg-blue-500/5"
+                              )}
+                              onClick={(e) => handleCellClick(e, row.id, col)}
+                            >
+                              <div className="px-3 py-2 truncate text-xs font-mono h-full flex items-center">
+                                {renderCellContent(row, col)}
+                              </div>
+                            </TableCell>
+                          ))}
+                          {isEditMode && (
+                            <TableCell className="text-center py-0 px-0">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleDeleteRow(row.id)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="h-4 w-4"/>
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </>
         )}
       </div>
+
+      {/* Smart Cell Editor */}
+      {activeCell && (
+        <CellEditor
+          value={tableData.data.find(r => r.id === activeCell.rowId)?.[activeCell.col]}
+          onSave={handleSaveCell}
+          onCancel={() => setActiveCell(null)}
+          onSetNull={handleSetNull}
+          position={activeCell.position}
+        />
+      )}
 
       {/* File Preview Modal */}
       <FilePreviewModal
