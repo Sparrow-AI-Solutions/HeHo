@@ -154,15 +154,20 @@ export default function SettingsPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pantryId: pantryInput })
         })
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(errorData.error || `Failed to connect (${response.status})`)
+        }
+        
         const data = await response.json()
-        if (!response.ok) throw new Error(data.error)
-        setSuccess(data.message)
-        if (data.data) {
-            setPantryId(data.data.pantry_id || "")
+        setSuccess(data.message || 'Pantry ID saved successfully!')
+        if (data.data && data.data.pantry_id) {
+            setPantryId(data.data.pantry_id)
             setPantryInput("")
         }
       } catch (err: any) {
-        setError(err.message)
+        setError(err.message || 'Failed to connect Pantry')
       }
       setIsConnectingPantry(false)
   }
@@ -172,12 +177,17 @@ export default function SettingsPage() {
       clearMessages()
       try {
         const response = await fetch('/api/pantry/connect', { method: 'DELETE' })
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(errorData.error || `Failed to disconnect (${response.status})`)
+        }
+        
         const data = await response.json()
-        if (!response.ok) throw new Error(data.error)
-        setSuccess(data.message)
+        setSuccess(data.message || 'Pantry disconnected successfully!')
         setPantryId("")
       } catch (err: any) {
-        setError(err.message)
+        setError(err.message || 'Failed to disconnect Pantry')
       }
       setIsDisconnectingPantry(false)
   }

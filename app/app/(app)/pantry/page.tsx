@@ -16,8 +16,6 @@ import {
   Edit2, 
   Save, 
   X, 
-  ChevronRight, 
-  ChevronDown,
   Database,
   ArrowLeft,
   RefreshCw
@@ -53,98 +51,141 @@ export default function PantryPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [loadingBasket, setLoadingBasket] = useState(false)
 
   const supabase = createClient()
 
   const fetchPantryInfo = useCallback(async (id: string) => {
     try {
       const response = await fetch('/api/pantry')
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to fetch Pantry data (${response.status})`)
+      }
+
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch Pantry data')
       setPantryData(data)
+      setError(null)
     } catch (err: any) {
-      setError(err.message)
+      console.error('Error fetching Pantry info:', err)
+      setError(err.message || 'Failed to fetch Pantry data')
     }
   }, [])
 
   useEffect(() => {
     const init = async () => {
       setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data } = await supabase
-          .from('users')
-          .select('pantry_id')
-          .eq('id', user.id)
-          .single()
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
         
-        if (data?.pantry_id) {
-          setPantryId(data.pantry_id)
-          await fetchPantryInfo(data.pantry_id)
+        if (authError) {
+          throw new Error('Authentication failed')
         }
+
+        if (user) {
+          const { data, error: dbError } = await supabase
+            .from('users')
+            .select('pantry_id')
+            .eq('id', user.id)
+            .single()
+          
+          if (dbError) {
+            throw new Error('Failed to load Pantry ID from profile')
+          }
+
+          if (data?.pantry_id) {
+            setPantryId(data.pantry_id)
+            await fetchPantryInfo(data.pantry_id)
+          }
+        }
+      } catch (err: any) {
+        console.error('Error initializing Pantry:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     init()
   }, [supabase, fetchPantryInfo])
 
   const fetchBasketContent = async (basketName: string) => {
-    setLoading(true)
+    setLoadingBasket(true)
     try {
-      const response = await fetch(`/api/pantry?basket=${basketName}`)
+      const response = await fetch(`/api/pantry?basket=${encodeURIComponent(basketName)}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to fetch basket (${response.status})`)
+      }
+
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch basket content')
       setBasketContent(data)
       setSelectedBasket(basketName)
       setIsEditing(false)
       setEditMode('value')
+      setError(null)
     } catch (err: any) {
-      toast.error(err.message)
+      console.error('Error fetching basket:', err)
+      toast.error(err.message || 'Failed to fetch basket content')
     } finally {
-      setLoading(false)
+      setLoadingBasket(false)
     }
   }
 
   const handleCreateBasket = async () => {
-    if (!newBasketName.trim()) return
+    if (!newBasketName.trim()) {
+      toast.error('Please enter a bucket name')
+      return
+    }
+    
     setIsCreating(true)
     try {
       const response = await fetch('/api/pantry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ basketName: newBasketName, data: {} })
+        body: JSON.stringify({ basketName: newBasketName.trim(), data: {} })
       })
+
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to create basket')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to create basket (${response.status})`)
       }
-      toast.success(`Basket "${newBasketName}" created`)
+
+      toast.success(`Bucket "${newBasketName}" created`)
       setNewBasketName('')
       if (pantryId) await fetchPantryInfo(pantryId)
     } catch (err: any) {
-      toast.error(err.message)
+      console.error('Error creating basket:', err)
+      toast.error(err.message || 'Failed to create bucket')
     } finally {
       setIsCreating(false)
     }
   }
 
   const handleDeleteBasket = async (basketName: string) => {
-    if (!confirm(`Are you sure you want to delete basket "${basketName}"?`)) return
+    if (!confirm(`Are you sure you want to delete bucket "${basketName}"?`)) return
+    
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/pantry?basket=${basketName}`, { method: 'DELETE' })
+      const response = await fetch(`/api/pantry?basket=${encodeURIComponent(basketName)}`, { 
+        method: 'DELETE' 
+      })
+
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to delete basket')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to delete basket (${response.status})`)
       }
-      toast.success(`Basket "${basketName}" deleted`)
+
+      toast.success(`Bucket "${basketName}" deleted`)
       if (selectedBasket === basketName) {
         setSelectedBasket(null)
         setBasketContent(null)
       }
       if (pantryId) await fetchPantryInfo(pantryId)
     } catch (err: any) {
-      toast.error(err.message)
+      console.error('Error deleting basket:', err)
+      toast.error(err.message || 'Failed to delete bucket')
     } finally {
       setIsDeleting(false)
     }
@@ -152,21 +193,26 @@ export default function PantryPage() {
 
   const handleSaveBasket = async () => {
     if (!selectedBasket) return
+    
     setIsSaving(true)
     try {
       const response = await fetch('/api/pantry', {
-        method: 'POST', // Pantry uses POST for both create and update (replace)
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ basketName: selectedBasket, data: basketContent })
+        body: JSON.stringify({ basketName: selectedBasket, data: basketContent || {} })
       })
+
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to save basket')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to save basket (${response.status})`)
       }
-      toast.success('Basket saved successfully')
+
+      toast.success('Bucket saved successfully')
       setIsEditing(false)
+      setError(null)
     } catch (err: any) {
-      toast.error(err.message)
+      console.error('Error saving basket:', err)
+      toast.error(err.message || 'Failed to save bucket')
     } finally {
       setIsSaving(false)
     }
@@ -176,6 +222,9 @@ export default function PantryPage() {
     const newContent = { ...basketContent }
     let current = newContent
     for (let i = 0; i < path.length - 1; i++) {
+      if (!(path[i] in current)) {
+        current[path[i]] = {}
+      }
       current = current[path[i]]
     }
     current[path[path.length - 1]] = value
@@ -308,41 +357,44 @@ export default function PantryPage() {
                     placeholder="New bucket name" 
                     value={newBasketName}
                     onChange={(e) => setNewBasketName(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCreateBasket()}
                     className="h-9 bg-background/50"
                   />
-                  <Button size="sm" onClick={handleCreateBasket} disabled={isCreating || !newBasketName}>
+                  <Button size="sm" onClick={handleCreateBasket} disabled={isCreating || !newBasketName.trim()}>
                     {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   </Button>
                 </div>
 
                 <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
-                  {pantryData?.baskets.map((basket) => (
-                    <div 
-                      key={basket.name}
-                      className={`
-                        group flex items-center justify-between p-2 rounded-md transition-colors cursor-pointer
-                        ${selectedBasket === basket.name ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-muted/50 border border-transparent'}
-                      `}
-                      onClick={() => fetchBasketContent(basket.name)}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Database className="h-4 w-4 shrink-0" />
-                        <span className="text-sm font-medium truncate">{basket.name}</span>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteBasket(basket.name)
-                        }}
+                  {pantryData?.baskets && pantryData.baskets.length > 0 ? (
+                    pantryData.baskets.map((basket) => (
+                      <div 
+                        key={basket.name}
+                        className={`
+                          group flex items-center justify-between p-2 rounded-md transition-colors cursor-pointer
+                          ${selectedBasket === basket.name ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-muted/50 border border-transparent'}
+                        `}
+                        onClick={() => fetchBasketContent(basket.name)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                  {pantryData?.baskets.length === 0 && (
+                        <div className="flex items-center gap-2 truncate">
+                          <Database className="h-4 w-4 shrink-0" />
+                          <span className="text-sm font-medium truncate">{basket.name}</span>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteBasket(basket.name)
+                          }}
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
                     <p className="text-center py-8 text-sm text-muted-foreground italic">No buckets found.</p>
                   )}
                 </div>
@@ -438,7 +490,11 @@ export default function PantryPage() {
                   )}
                 </CardHeader>
                 <CardContent className="flex-1 overflow-auto p-6">
-                  {editMode === 'full' && isEditing ? (
+                  {loadingBasket ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : editMode === 'full' && isEditing ? (
                     <Textarea 
                       value={JSON.stringify(basketContent, null, 2)}
                       onChange={(e) => {

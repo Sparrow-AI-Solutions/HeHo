@@ -111,19 +111,49 @@ export default function StorageSettingsPage() {
         return
     }
     setIsConnectingPantry(true)
-    const data = await handleApiCall('/api/pantry/connect', 'POST', { pantryId: pantryInput }, 'Pantry successfully connected!')
-    if(data && data.data) {
-        setPantryId(data.data.pantry_id || "")
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch('/api/pantry/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pantryId: pantryInput })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to connect (${response.status})`)
+      }
+      
+      const data = await response.json()
+      setSuccess(data.message || 'Pantry successfully connected!')
+      if (data.data && data.data.pantry_id) {
+        setPantryId(data.data.pantry_id)
         setPantryInput("")
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to connect Pantry')
     }
     setIsConnectingPantry(false)
   }
 
   const handleDisconnectPantry = async () => {
     setIsDisconnectingPantry(true)
-    const data = await handleApiCall('/api/pantry/connect', 'DELETE', {}, 'Pantry successfully disconnected!')
-    if(data) {
-        setPantryId("")
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch('/api/pantry/connect', { method: 'DELETE' })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to disconnect (${response.status})`)
+      }
+      
+      const data = await response.json()
+      setSuccess(data.message || 'Pantry successfully disconnected!')
+      setPantryId("")
+    } catch (err: any) {
+      setError(err.message || 'Failed to disconnect Pantry')
     }
     setIsDisconnectingPantry(false)
   }
