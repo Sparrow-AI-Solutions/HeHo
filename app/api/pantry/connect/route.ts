@@ -4,11 +4,10 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-// Handle cases where the client accidentally sends a GET request
 export async function GET() {
   return NextResponse.json(
     { error: 'This endpoint should be called with POST to connect, or DELETE to disconnect. GET is not a supported method.' },
-    { status: 405 } // 405 Method Not Allowed
+    { status: 405 }
   );
 }
 
@@ -16,7 +15,6 @@ export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies })
 
   try {
-    // Validate request body
     let body: any
     try {
       body = await request.json()
@@ -37,10 +35,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Update the user's record with the Pantry ID
+    const trimmedPantryId = pantryId.trim()
+
     const { data, error } = await supabase
       .from('users')
-      .update({ pantry_id: pantryId.trim() })
+      .update({ pantry_id: trimmedPantryId })
       .eq('id', user.id)
       .select('pantry_id')
       .single()
@@ -63,7 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       message: 'Pantry ID saved successfully!', 
       data: {
-        pantry_id: data.pantry_id
+        pantry_id: data.pantry_id || trimmedPantryId
       }
     }, { status: 200 })
 
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE() {
   const supabase = createRouteHandlerClient({ cookies })
 
   try {

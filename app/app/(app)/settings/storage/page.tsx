@@ -121,11 +121,23 @@ export default function StorageSettingsPage() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to connect (${response.status})`)
+        let errorMessage = 'Failed to connect'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || `Failed to connect (${response.status})`
+        } catch (e) {
+          errorMessage = `Failed to connect (${response.status})`
+        }
+        throw new Error(errorMessage)
       }
       
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (e) {
+        throw new Error('Invalid response from server')
+      }
+      
       setSuccess(data.message || 'Pantry successfully connected!')
       if (data.data && data.data.pantry_id) {
         setPantryId(data.data.pantry_id)
@@ -145,11 +157,23 @@ export default function StorageSettingsPage() {
       const response = await fetch('/api/pantry/connect', { method: 'DELETE' })
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to disconnect (${response.status})`)
+        let errorMessage = 'Failed to disconnect'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || `Failed to disconnect (${response.status})`
+        } catch (e) {
+          errorMessage = `Failed to disconnect (${response.status})`
+        }
+        throw new Error(errorMessage)
       }
       
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (e) {
+        throw new Error('Invalid response from server')
+      }
+      
       setSuccess(data.message || 'Pantry successfully disconnected!')
       setPantryId("")
     } catch (err: any) {

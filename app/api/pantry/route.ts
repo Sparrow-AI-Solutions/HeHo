@@ -43,9 +43,10 @@ async function fetchFromPantry(url: string, options?: RequestInit) {
       },
     })
 
-    // Handle non-JSON responses
     const contentType = response.headers.get('content-type')
-    if (!contentType || !contentType.includes('application/json')) {
+    const isJson = contentType && contentType.includes('application/json')
+
+    if (!isJson) {
       if (!response.ok) {
         return {
           ok: false,
@@ -60,22 +61,33 @@ async function fetchFromPantry(url: string, options?: RequestInit) {
       }
     }
 
-    const data = await response.json()
+    let data: any
+    try {
+      data = await response.json()
+    } catch (parseError) {
+      console.error('Error parsing JSON from Pantry:', parseError)
+      return {
+        ok: false,
+        status: 500,
+        error: 'Invalid JSON response from Pantry API',
+      }
+    }
 
     if (!response.ok) {
       return {
         ok: false,
         status: response.status,
-        error: data.message || `Pantry API error: ${response.status}`,
+        error: data?.message || `Pantry API error: ${response.status}`,
       }
     }
 
     return {
       ok: true,
       status: response.status,
-      data,
+      data: data || {},
     }
   } catch (error: any) {
+    console.error('Network error calling Pantry:', error)
     return {
       ok: false,
       status: 500,
@@ -144,7 +156,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
-    return NextResponse.json(result.data, { status: 200 })
+    return NextResponse.json(result.data || { message: 'Basket created/updated successfully' }, { status: 200 })
   } catch (error: any) {
     console.error('Error in POST /api/pantry:', error)
     return NextResponse.json(
@@ -194,7 +206,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
-    return NextResponse.json(result.data, { status: 200 })
+    return NextResponse.json(result.data || { message: 'Basket updated successfully' }, { status: 200 })
   } catch (error: any) {
     console.error('Error in PUT /api/pantry:', error)
     return NextResponse.json(
