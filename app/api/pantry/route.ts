@@ -1,11 +1,10 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 const PANTRY_API = 'https://getpantry.cloud/apiv1/pantry'
 
 async function getPantryId() {
-  const supabase = createRouteHandlerClient({ cookies })
+  const supabase = await createClient()
   
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {

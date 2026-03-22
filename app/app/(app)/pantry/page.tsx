@@ -6,18 +6,20 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { 
-  Plus, 
-  Loader2, 
-  Package as PackageIcon, 
-  CheckCircle, 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  Plus,
+  Loader2,
+  Package as PackageIcon,
+  CheckCircle,
   Database as DatabaseIcon,
   AlertCircle,
   Edit2,
   Save,
   X,
-  Trash2
+  Trash2,
+  ArrowLeft,
+  Link2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from "sonner"
@@ -36,8 +38,6 @@ export default function PantryPage() {
   const [bucketContent, setBucketContent] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editMode, setEditMode] = useState<'value' | 'full'>('value')
-  const [newBucketName, setNewBucketName] = useState('')
-  const [connectBucketName, setConnectBucketName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -46,13 +46,12 @@ export default function PantryPage() {
 
   const supabase = createClient()
 
-  // Initialize
   useEffect(() => {
     const init = async () => {
       setLoading(true)
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
-        
+
         if (authError) {
           throw new Error('Authentication failed')
         }
@@ -63,7 +62,7 @@ export default function PantryPage() {
             .select('pantry_id')
             .eq('id', user.id)
             .single()
-          
+
           if (dbError) {
             throw new Error('Failed to load Pantry ID')
           }
@@ -80,17 +79,18 @@ export default function PantryPage() {
         setLoading(false)
       }
     }
+
     init()
   }, [supabase])
 
   const fetchBaskets = async () => {
     try {
       const response = await fetch('/api/pantry/buckets')
-      
+
       if (!response.ok) {
         const text = await response.text()
         const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
-        throw new Error(errorData.error || `Failed to fetch baskets`)
+        throw new Error(errorData.error || 'Failed to fetch baskets')
       }
 
       const text = await response.text()
@@ -107,11 +107,11 @@ export default function PantryPage() {
     setLoadingBucket(true)
     try {
       const response = await fetch(`/api/pantry?basket=${encodeURIComponent(bucketName)}`)
-      
+
       if (!response.ok) {
         const text = await response.text()
         const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
-        throw new Error(errorData.error || `Failed to fetch bucket`)
+        throw new Error(errorData.error || 'Failed to fetch bucket')
       }
 
       const text = await response.text()
@@ -123,34 +123,41 @@ export default function PantryPage() {
     } catch (err: any) {
       console.error('Error fetching bucket:', err)
       toast.error(err.message || 'Failed to fetch bucket content')
+      throw err
     } finally {
       setLoadingBucket(false)
     }
   }
 
+  const requestBucketName = (action: 'create' | 'connect') => {
+    const label = action === 'create' ? 'Enter a new bucket name' : 'Enter an existing bucket name'
+    const value = window.prompt(label, '')
+    return value?.trim() || ''
+  }
+
   const handleCreateBucket = async () => {
-    if (!newBucketName.trim()) {
-      toast.error('Please enter a bucket name')
+    const bucketName = requestBucketName('create')
+    if (!bucketName) {
       return
     }
-    
+
     setIsCreating(true)
     try {
       const response = await fetch('/api/pantry/buckets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ basket: newBucketName.trim() })
+        body: JSON.stringify({ basket: bucketName })
       })
 
       if (!response.ok) {
         const text = await response.text()
         const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
-        throw new Error(errorData.error || `Failed to create bucket`)
+        throw new Error(errorData.error || 'Failed to create bucket')
       }
 
-      toast.success(`Bucket "${newBucketName}" created`)
-      setNewBucketName('')
+      toast.success(`Bucket "${bucketName}" created`)
       await fetchBaskets()
+      await fetchBucketContent(bucketName)
     } catch (err: any) {
       console.error('Error creating bucket:', err)
       toast.error(err.message || 'Failed to create bucket')
@@ -160,22 +167,15 @@ export default function PantryPage() {
   }
 
   const handleConnectBucket = async () => {
-    if (!connectBucketName.trim()) {
-      toast.error('Please enter a bucket name')
+    const bucketName = requestBucketName('connect')
+    if (!bucketName) {
       return
     }
-    
+
     setIsConnecting(true)
     try {
-      const response = await fetch(`/api/pantry?basket=${encodeURIComponent(connectBucketName.trim())}`)
-      
-      if (!response.ok) {
-        throw new Error('Bucket not found in your Pantry')
-      }
-
-      toast.success(`Bucket "${connectBucketName}" connected`)
-      setConnectBucketName('')
-      await fetchBaskets()
+      await fetchBucketContent(bucketName)
+      toast.success(`Bucket "${bucketName}" opened`)
     } catch (err: any) {
       console.error('Error connecting bucket:', err)
       toast.error(err.message || 'Failed to connect bucket')
@@ -186,17 +186,17 @@ export default function PantryPage() {
 
   const handleDeleteBucket = async (bucketName: string) => {
     if (!confirm(`Are you sure you want to delete the bucket "${bucketName}"?`)) return
-    
+
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/pantry/buckets?basket=${encodeURIComponent(bucketName)}`, { 
-        method: 'DELETE' 
+      const response = await fetch(`/api/pantry/buckets?basket=${encodeURIComponent(bucketName)}`, {
+        method: 'DELETE'
       })
 
       if (!response.ok) {
         const text = await response.text()
         const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
-        throw new Error(errorData.error || `Failed to delete bucket`)
+        throw new Error(errorData.error || 'Failed to delete bucket')
       }
 
       toast.success(`Bucket "${bucketName}" deleted`)
@@ -215,7 +215,7 @@ export default function PantryPage() {
 
   const handleSaveBucket = async () => {
     if (!selectedBasket) return
-    
+
     setIsSaving(true)
     try {
       const response = await fetch('/api/pantry', {
@@ -227,7 +227,7 @@ export default function PantryPage() {
       if (!response.ok) {
         const text = await response.text()
         const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
-        throw new Error(errorData.error || `Failed to save bucket`)
+        throw new Error(errorData.error || 'Failed to save bucket')
       }
 
       toast.success('Bucket saved successfully')
@@ -257,8 +257,8 @@ export default function PantryPage() {
     if (typeof obj !== 'object' || obj === null) {
       return (
         <div className="flex items-center gap-2 py-1">
-          <Input 
-            value={obj === null ? 'null' : obj.toString()} 
+          <Input
+            value={obj === null ? 'null' : obj.toString()}
             onChange={(e) => updateValue(path, e.target.value)}
             className="h-8 bg-background/50 text-xs"
             disabled={!isEditing || editMode === 'full'}
@@ -278,8 +278,8 @@ export default function PantryPage() {
                   {Array.isArray(value) ? 'Array' : 'Object'}
                 </span>
               ) : (
-                <Input 
-                  value={value === null ? 'null' : value.toString()} 
+                <Input
+                  value={value === null ? 'null' : value.toString()}
                   onChange={(e) => updateValue([...path, key], e.target.value)}
                   className="h-8 bg-background/50 flex-1 text-xs"
                   disabled={!isEditing || editMode === 'full'}
@@ -303,57 +303,64 @@ export default function PantryPage() {
 
   if (!pantryId) {
     return (
-      <div className="container mx-auto px-4 py-12 max-w-md">
-        <Card className="border-border/50 bg-card/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PackageIcon className="h-6 w-6" />
-              Pantry Not Connected
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">Connect your Pantry ID in settings to manage JSON storage.</p>
-            <Button asChild className="w-full">
-              <Link href="/app/settings">Go to Settings</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background p-4 sm:p-6">
+        <div className="max-w-3xl mx-auto">
+          <Button variant="ghost" asChild className="mb-4">
+            <Link href="/app/settings">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Settings
+            </Link>
+          </Button>
+          <Alert>
+            <PackageIcon className="h-4 w-4" />
+            <AlertTitle>Pantry not connected</AlertTitle>
+            <AlertDescription>
+              Add your Pantry ID in settings before managing buckets.
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Pantry Storage</h1>
-            <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage your JSON buckets.</p>
-          </div>
-          
-          <div className="hidden sm:flex gap-2">
-            <Button asChild variant="outline" className="border-border h-9 sm:h-10">
-              <Link href="/app/settings"><PackageIcon className="mr-2 h-4 w-4"/> Connect Pantry</Link>
-            </Button>
-          </div>
-
-          <div className="sm:hidden flex flex-col gap-2 w-full">
-            <Button asChild variant="outline" className="w-full border-border h-9">
-              <Link href="/app/settings"><PackageIcon className="mr-2 h-4 w-4"/> Connect Pantry</Link>
-            </Button>
+    <div className="min-h-screen bg-background p-4 sm:p-6">
+      <div className="max-w-full mx-auto">
+        <div className="mb-6">
+          <Button variant="ghost" asChild className="mb-4">
+            <Link href="/app/settings">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Settings
+            </Link>
+          </Button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Pantry</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage your JSON buckets and values.</p>
+            </div>
+            {!selectedBasket && (
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={handleCreateBucket} disabled={isCreating}>
+                  {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  Create Bucket
+                </Button>
+                <Button onClick={handleConnectBucket} disabled={isConnecting} variant="outline">
+                  {isConnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
+                  Connect Bucket
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
         {error && (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs sm:text-sm">{error}</AlertDescription>
+            <AlertTitle>Action Failed</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {selectedBasket ? (
-          // Bucket Editor View
-          <Card className="border-border/50 bg-card/50">
+          <Card className="border border-border/50 rounded-lg bg-card/50 overflow-hidden">
             <CardHeader className="border-b border-border/50 pb-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -395,17 +402,17 @@ export default function PantryPage() {
                 <div className="flex items-center gap-4 mt-4 p-2 bg-muted/30 rounded-md">
                   <span className="text-xs font-medium text-muted-foreground">Mode:</span>
                   <div className="flex gap-1">
-                    <Button 
-                      variant={editMode === 'value' ? 'secondary' : 'ghost'} 
-                      size="xs" 
+                    <Button
+                      variant={editMode === 'value' ? 'secondary' : 'ghost'}
+                      size="sm"
                       className="text-[10px] h-7 px-2"
                       onClick={() => setEditMode('value')}
                     >
                       Values
                     </Button>
-                    <Button 
-                      variant={editMode === 'full' ? 'secondary' : 'ghost'} 
-                      size="xs" 
+                    <Button
+                      variant={editMode === 'full' ? 'secondary' : 'ghost'}
+                      size="sm"
                       className="text-[10px] h-7 px-2"
                       onClick={() => setEditMode('full')}
                     >
@@ -421,12 +428,12 @@ export default function PantryPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : editMode === 'full' && isEditing ? (
-                <Textarea 
+                <Textarea
                   value={JSON.stringify(bucketContent, null, 2)}
                   onChange={(e) => {
                     try {
                       setBucketContent(JSON.parse(e.target.value))
-                    } catch (err) {
+                    } catch {
                       // Allow invalid JSON while typing
                     }
                   }}
@@ -446,103 +453,63 @@ export default function PantryPage() {
             </CardContent>
           </Card>
         ) : (
-          // Buckets Grid View
-          <>
-            <div className="space-y-4 mb-8">
-              {/* Create Bucket Section */}
-              <div>
-                <h2 className="text-sm font-semibold text-muted-foreground mb-2">Create a Bucket</h2>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input 
-                    placeholder="Enter new bucket name" 
-                    value={newBucketName}
-                    onChange={(e) => setNewBucketName(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleCreateBucket()}
-                    className="h-9 bg-background/50 text-xs sm:text-sm flex-1"
-                  />
-                  <Button size="sm" onClick={handleCreateBucket} disabled={isCreating || !newBucketName.trim()} className="shrink-0">
-                    {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                    Create
-                  </Button>
-                </div>
-              </div>
-
-              {/* Connect Bucket Section */}
-              <div>
-                <h2 className="text-sm font-semibold text-muted-foreground mb-2">Connect a Bucket</h2>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input 
-                    placeholder="Enter existing bucket name" 
-                    value={connectBucketName}
-                    onChange={(e) => setConnectBucketName(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleConnectBucket()}
-                    className="h-9 bg-background/50 text-xs sm:text-sm flex-1"
-                  />
-                  <Button size="sm" onClick={handleConnectBucket} disabled={isConnecting || !connectBucketName.trim()} className="shrink-0">
-                    {isConnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                    Connect
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Buckets Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="border border-border/50 rounded-lg bg-card/50 overflow-hidden">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
               {baskets.length > 0 ? (
-                baskets.map(bucket => (
-                  <div key={bucket.name} className="relative">
-                    <Card 
-                      className="border-border/50 bg-card hover:border-foreground/30 hover:bg-card/80 transition-all cursor-pointer h-full flex flex-col"
+                baskets.map((bucket) => (
+                  <div
+                    key={bucket.name}
+                    className="border-b border-r border-border/50 last:border-r-0"
+                  >
+                    <div
+                      className="group relative p-5 hover:bg-muted/20 transition-colors cursor-pointer h-full"
                       onClick={() => fetchBucketContent(bucket.name)}
                     >
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-foreground flex items-center gap-3 text-base sm:text-lg truncate">
-                          <DatabaseIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground flex-shrink-0"/>
-                          <span className="truncate">{bucket.name}</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex-grow flex flex-col justify-between">
-                        <p className="text-muted-foreground text-xs sm:text-sm">Click to view and edit this bucket's data.</p>
-                        <div className="mt-4 p-2 rounded-md bg-green-500/10 border border-green-500/50 text-green-500 text-[10px] sm:text-xs flex items-center gap-2">
-                            <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0"/>
-                            <span>Full JSON editing enabled.</span>
+                      <div className="pr-10">
+                        <div className="flex items-center gap-3 mb-3">
+                          <DatabaseIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          <h2 className="text-base font-semibold truncate">{bucket.name}</h2>
                         </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteBucket(bucket.name)
-                      }}
-                      disabled={isDeleting}
-                      className="absolute top-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 bg-background/80 backdrop-blur-sm"
-                    >
-                      {isDeleting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
+                        <p className="text-muted-foreground text-sm">Click to view and edit this bucket&apos;s data.</p>
+                        <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-green-500/10 border border-green-500/30 px-2 py-1 text-[11px] text-green-600 dark:text-green-400">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          JSON editing enabled
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteBucket(bucket.name)
+                        }}
+                        disabled={isDeleting}
+                        className="absolute top-3 right-3 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      >
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
                 ))
               ) : (
-                <div className="col-span-full">
-                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-border/50 rounded-xl p-12 text-center bg-card/30">
-                    <div className="bg-primary/10 p-4 rounded-full mb-4">
-                      <DatabaseIcon className="h-10 w-10 text-primary" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">No Buckets Found</h3>
-                    <p className="text-muted-foreground max-w-xs mx-auto text-sm">
-                      Create a new bucket or connect an existing one to get started.
-                    </p>
+                <div className="col-span-full flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
+                  <DatabaseIcon className="h-10 w-10 text-primary mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No buckets found</h3>
+                  <p className="max-w-sm text-sm mb-4">Create a new bucket or connect an existing one to start managing Pantry data.</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={handleCreateBucket} disabled={isCreating}>
+                      {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                      Create Bucket
+                    </Button>
+                    <Button onClick={handleConnectBucket} disabled={isConnecting} variant="outline">
+                      {isConnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
+                      Connect Bucket
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
