@@ -8,21 +8,51 @@ export async function GET() {
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
+      console.error("Auth error in GET /api/pantry/buckets:", authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
-      .from('user_connected_pantry_buckets')
-      .select('id, bucket_name, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    // Get all baskets from Pantry
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('pantry_id')
+      .eq('id', user.id)
+      .single()
 
-    if (error) {
-      console.error("Error fetching buckets:", error)
-      return NextResponse.json({ error: 'Failed to fetch buckets' }, { status: 500 })
+    if (userError || !userData?.pantry_id) {
+      console.error("Error fetching user pantry_id:", userError)
+      return NextResponse.json({ error: 'Pantry not configured' }, { status: 400 })
     }
 
-    return NextResponse.json({ data: data || [] }, { status: 200 })
+    const pantryId = userData.pantry_id
+
+    // Fetch from Pantry API to get all baskets
+    const pantryResponse = await fetch(`https://getpantry.cloud/apiv1/pantry/${pantryId}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+    if (!pantryResponse.ok) {
+      console.error("Error fetching from Pantry API:", pantryResponse.status)
+      return NextResponse.json({ error: 'Failed to fetch baskets from Pantry' }, { status: 500 })
+    }
+
+    let pantryData
+    try {
+      pantryData = await pantryResponse.json()
+    } catch (e) {
+      console.error("Error parsing Pantry response:", e)
+      return NextResponse.json({ error: 'Invalid response from Pantry' }, { status: 500 })
+    }
+
+    const baskets = pantryData.baskets || []
+
+    return NextResponse.json({ 
+      data: baskets.map((b: any) => ({
+        name: b.name,
+        ttl: b.ttl
+      }))
+    }, { status: 200 })
   } catch (error: any) {
     console.error("Error in GET /api/pantry/buckets:", error)
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
@@ -37,6 +67,7 @@ export async function POST(request: Request) {
     try {
       body = await request.json()
     } catch (parseError) {
+      console.error("Error parsing request body:", parseError)
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
@@ -48,31 +79,44 @@ export async function POST(request: Request) {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
+      console.error("Auth error in POST /api/pantry/buckets:", authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const trimmedBucketName = bucketName.trim()
 
-    const { data, error } = await supabase
-      .from('user_connected_pantry_buckets')
-      .insert({
-        user_id: user.id,
-        bucket_name: trimmedBucketName
-      })
-      .select()
+    // Get user's Pantry ID
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('pantry_id')
+      .eq('id', user.id)
       .single()
 
-    if (error) {
-      console.error("Error adding bucket:", error)
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'This bucket is already connected' }, { status: 409 })
+    if (userError || !userData?.pantry_id) {
+      console.error("Error fetching user pantry_id:", userError)
+      return NextResponse.json({ error: 'Pantry not configured' }, { status: 400 })
+    }
+
+    const pantryId = userData.pantry_id
+
+    // Create bucket in Pantry by posting empty data
+    const createResponse = await fetch(
+      `https://getpantry.cloud/apiv1/pantry/${pantryId}/basket/${encodeURIComponent(trimmedBucketName)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
       }
-      return NextResponse.json({ error: 'Failed to add bucket' }, { status: 500 })
+    )
+
+    if (!createResponse.ok) {
+      console.error("Error creating basket in Pantry:", createResponse.status)
+      return NextResponse.json({ error: 'Failed to create bucket in Pantry' }, { status: 500 })
     }
 
     return NextResponse.json({ 
-      message: 'Bucket added successfully',
-      data 
+      message: 'Bucket created successfully',
+      data: { name: trimmedBucketName }
     }, { status: 201 })
   } catch (error: any) {
     console.error("Error in POST /api/pantry/buckets:", error)
@@ -85,26 +129,41 @@ export async function DELETE(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
-    const bucketId = searchParams.get('id')
+    const bucketName = searchParams.get('name')
 
-    if (!bucketId) {
-      return NextResponse.json({ error: 'Bucket ID is required' }, { status: 400 })
+    if (!bucketName) {
+      return NextResponse.json({ error: 'Bucket name is required' }, { status: 400 })
     }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
+      console.error("Auth error in DELETE /api/pantry/buckets:", authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { error } = await supabase
-      .from('user_connected_pantry_buckets')
-      .delete()
-      .eq('id', bucketId)
-      .eq('user_id', user.id)
+    // Get user's Pantry ID
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('pantry_id')
+      .eq('id', user.id)
+      .single()
 
-    if (error) {
-      console.error("Error deleting bucket:", error)
-      return NextResponse.json({ error: 'Failed to delete bucket' }, { status: 500 })
+    if (userError || !userData?.pantry_id) {
+      console.error("Error fetching user pantry_id:", userError)
+      return NextResponse.json({ error: 'Pantry not configured' }, { status: 400 })
+    }
+
+    const pantryId = userData.pantry_id
+
+    // Delete bucket from Pantry
+    const deleteResponse = await fetch(
+      `https://getpantry.cloud/apiv1/pantry/${pantryId}/basket/${encodeURIComponent(bucketName)}`,
+      { method: 'DELETE' }
+    )
+
+    if (!deleteResponse.ok) {
+      console.error("Error deleting basket from Pantry:", deleteResponse.status)
+      return NextResponse.json({ error: 'Failed to delete bucket from Pantry' }, { status: 500 })
     }
 
     return NextResponse.json({ message: 'Bucket deleted successfully' }, { status: 200 })

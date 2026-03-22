@@ -2,50 +2,50 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
-  Loader2, 
-  Package, 
   Plus, 
-  Trash2, 
-  Edit2, 
-  Save, 
-  X, 
+  Loader2, 
+  Package as PackageIcon, 
+  CheckCircle, 
   Database as DatabaseIcon,
   AlertCircle,
-  CheckCircle
+  Edit2,
+  Save,
+  X
 } from 'lucide-react'
-import Link from 'next/link'
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from "sonner"
 
-interface ConnectedBucket {
-  id: string
-  bucket_name: string
-  created_at: string
+interface Basket {
+  name: string
+  ttl: number
 }
 
 export default function PantryPage() {
   const [pantryId, setPantryId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [connectedBuckets, setConnectedBuckets] = useState<ConnectedBucket[]>([])
-  const [selectedBucket, setSelectedBucket] = useState<string | null>(null)
+  const [baskets, setBaskets] = useState<Basket[]>([])
+  const [selectedBasket, setSelectedBasket] = useState<string | null>(null)
   const [bucketContent, setBucketContent] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editMode, setEditMode] = useState<'value' | 'full'>('value')
   const [newBucketName, setNewBucketName] = useState('')
-  const [isAdding, setIsAdding] = useState(false)
+  const [connectBucketName, setConnectBucketName] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [loadingBucket, setLoadingBucket] = useState(false)
 
   const supabase = createClient()
 
-  // Initialize and fetch data
+  // Initialize
   useEffect(() => {
     const init = async () => {
       setLoading(true)
@@ -69,7 +69,7 @@ export default function PantryPage() {
 
           if (data?.pantry_id) {
             setPantryId(data.pantry_id)
-            await fetchConnectedBuckets()
+            await fetchBaskets()
           }
         }
       } catch (err: any) {
@@ -82,20 +82,32 @@ export default function PantryPage() {
     init()
   }, [supabase])
 
-  const fetchConnectedBuckets = async () => {
+  const fetchBaskets = async () => {
     try {
       const response = await fetch('/api/pantry/buckets')
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to fetch buckets (${response.status})`)
+        let errorMessage = 'Failed to fetch buckets'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // Ignore JSON parse error
+        }
+        throw new Error(errorMessage)
       }
 
-      const result = await response.json()
-      setConnectedBuckets(result.data || [])
+      let result
+      try {
+        result = await response.json()
+      } catch (e) {
+        throw new Error('Invalid response from server')
+      }
+
+      setBaskets(result.data || [])
       setError(null)
     } catch (err: any) {
-      console.error('Error fetching buckets:', err)
+      console.error('Error fetching baskets:', err)
       setError(err.message)
     }
   }
@@ -106,13 +118,25 @@ export default function PantryPage() {
       const response = await fetch(`/api/pantry?basket=${encodeURIComponent(bucketName)}`)
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to fetch bucket (${response.status})`)
+        let errorMessage = 'Failed to fetch bucket'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // Ignore JSON parse error
+        }
+        throw new Error(errorMessage)
       }
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (e) {
+        throw new Error('Invalid response from server')
+      }
+
       setBucketContent(data)
-      setSelectedBucket(bucketName)
+      setSelectedBasket(bucketName)
       setIsEditing(false)
       setEditMode('value')
     } catch (err: any) {
@@ -123,13 +147,13 @@ export default function PantryPage() {
     }
   }
 
-  const handleAddBucket = async () => {
+  const handleCreateBucket = async () => {
     if (!newBucketName.trim()) {
       toast.error('Please enter a bucket name')
       return
     }
     
-    setIsAdding(true)
+    setIsCreating(true)
     try {
       const response = await fetch('/api/pantry/buckets', {
         method: 'POST',
@@ -138,41 +162,79 @@ export default function PantryPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to add bucket (${response.status})`)
+        let errorMessage = 'Failed to create bucket'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // Ignore JSON parse error
+        }
+        throw new Error(errorMessage)
       }
 
-      toast.success(`Bucket "${newBucketName}" added`)
+      toast.success(`Bucket "${newBucketName}" created`)
       setNewBucketName('')
-      await fetchConnectedBuckets()
+      await fetchBaskets()
     } catch (err: any) {
-      console.error('Error adding bucket:', err)
-      toast.error(err.message || 'Failed to add bucket')
+      console.error('Error creating bucket:', err)
+      toast.error(err.message || 'Failed to create bucket')
     } finally {
-      setIsAdding(false)
+      setIsCreating(false)
     }
   }
 
-  const handleDeleteBucket = async (bucketId: string, bucketName: string) => {
-    if (!confirm(`Are you sure you want to remove the bucket "${bucketName}" from your app?`)) return
+  const handleConnectBucket = async () => {
+    if (!connectBucketName.trim()) {
+      toast.error('Please enter a bucket name')
+      return
+    }
+    
+    setIsConnecting(true)
+    try {
+      // Just fetch to verify bucket exists
+      const response = await fetch(`/api/pantry?basket=${encodeURIComponent(connectBucketName.trim())}`)
+      
+      if (!response.ok) {
+        throw new Error('Bucket not found in your Pantry')
+      }
+
+      toast.success(`Bucket "${connectBucketName}" connected`)
+      setConnectBucketName('')
+      await fetchBaskets()
+    } catch (err: any) {
+      console.error('Error connecting bucket:', err)
+      toast.error(err.message || 'Failed to connect bucket')
+    } finally {
+      setIsConnecting(false)
+    }
+  }
+
+  const handleDeleteBucket = async (bucketName: string) => {
+    if (!confirm(`Are you sure you want to delete the bucket "${bucketName}" from your Pantry?`)) return
     
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/pantry/buckets?id=${bucketId}`, { 
+      const response = await fetch(`/api/pantry/buckets?name=${encodeURIComponent(bucketName)}`, { 
         method: 'DELETE' 
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to delete bucket (${response.status})`)
+        let errorMessage = 'Failed to delete bucket'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // Ignore JSON parse error
+        }
+        throw new Error(errorMessage)
       }
 
-      toast.success(`Bucket "${bucketName}" removed`)
-      if (selectedBucket === bucketName) {
-        setSelectedBucket(null)
+      toast.success(`Bucket "${bucketName}" deleted`)
+      if (selectedBasket === bucketName) {
+        setSelectedBasket(null)
         setBucketContent(null)
       }
-      await fetchConnectedBuckets()
+      await fetchBaskets()
     } catch (err: any) {
       console.error('Error deleting bucket:', err)
       toast.error(err.message || 'Failed to delete bucket')
@@ -182,19 +244,25 @@ export default function PantryPage() {
   }
 
   const handleSaveBucket = async () => {
-    if (!selectedBucket) return
+    if (!selectedBasket) return
     
     setIsSaving(true)
     try {
       const response = await fetch('/api/pantry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ basketName: selectedBucket, data: bucketContent || {} })
+        body: JSON.stringify({ basketName: selectedBasket, data: bucketContent || {} })
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to save bucket (${response.status})`)
+        let errorMessage = 'Failed to save bucket'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // Ignore JSON parse error
+        }
+        throw new Error(errorMessage)
       }
 
       toast.success('Bucket saved successfully')
@@ -274,7 +342,7 @@ export default function PantryPage() {
         <Card className="border-border/50 bg-card/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Package className="h-6 w-6" />
+              <PackageIcon className="h-6 w-6" />
               Pantry Not Connected
             </CardTitle>
           </CardHeader>
@@ -301,14 +369,14 @@ export default function PantryPage() {
           {/* Desktop buttons */}
           <div className="hidden sm:flex gap-2">
             <Button asChild variant="outline" className="border-border h-9 sm:h-10">
-              <Link href="/app/settings"><Plus className="mr-2 h-4 w-4"/> Connect Pantry</Link>
+              <Link href="/app/settings"><PackageIcon className="mr-2 h-4 w-4"/> Connect Pantry</Link>
             </Button>
           </div>
 
           {/* Mobile buttons */}
           <div className="sm:hidden flex flex-col gap-2 w-full">
             <Button asChild variant="outline" className="w-full border-border h-9">
-              <Link href="/app/settings"><Plus className="mr-2 h-4 w-4"/> Connect Pantry</Link>
+              <Link href="/app/settings"><PackageIcon className="mr-2 h-4 w-4"/> Connect Pantry</Link>
             </Button>
           </div>
         </div>
@@ -320,7 +388,7 @@ export default function PantryPage() {
           </Alert>
         )}
 
-        {selectedBucket ? (
+        {selectedBasket ? (
           // Bucket Editor View
           <Card className="border-border/50 bg-card/50">
             <CardHeader className="border-b border-border/50 pb-4">
@@ -328,7 +396,7 @@ export default function PantryPage() {
                 <div>
                   <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
                     <DatabaseIcon className="h-5 w-5 text-primary" />
-                    {selectedBucket}
+                    {selectedBasket}
                   </CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
@@ -338,7 +406,7 @@ export default function PantryPage() {
                         <Edit2 className="h-4 w-4 mr-2" />
                         Edit
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedBucket(null)}>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedBasket(null)}>
                         <X className="h-4 w-4 mr-2" />
                         Close
                       </Button>
@@ -347,7 +415,7 @@ export default function PantryPage() {
                     <>
                       <Button variant="outline" size="sm" onClick={() => {
                         setIsEditing(false)
-                        fetchBucketContent(selectedBucket)
+                        fetchBucketContent(selectedBasket)
                       }}>
                         <X className="h-4 w-4 mr-2" />
                         Cancel
@@ -417,34 +485,57 @@ export default function PantryPage() {
         ) : (
           // Buckets Grid View
           <>
-            <div className="mb-6">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input 
-                  placeholder="Enter bucket name" 
-                  value={newBucketName}
-                  onChange={(e) => setNewBucketName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddBucket()}
-                  className="h-9 bg-background/50 text-xs sm:text-sm flex-1"
-                />
-                <Button size="sm" onClick={handleAddBucket} disabled={isAdding || !newBucketName.trim()} className="shrink-0">
-                  {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                  Create
-                </Button>
+            <div className="space-y-4 mb-8">
+              {/* Create Bucket Section */}
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-2">Create a Bucket</h2>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input 
+                    placeholder="Enter new bucket name" 
+                    value={newBucketName}
+                    onChange={(e) => setNewBucketName(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCreateBucket()}
+                    className="h-9 bg-background/50 text-xs sm:text-sm flex-1"
+                  />
+                  <Button size="sm" onClick={handleCreateBucket} disabled={isCreating || !newBucketName.trim()} className="shrink-0">
+                    {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Create
+                  </Button>
+                </div>
+              </div>
+
+              {/* Connect Bucket Section */}
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-2">Connect a Bucket</h2>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input 
+                    placeholder="Enter existing bucket name" 
+                    value={connectBucketName}
+                    onChange={(e) => setConnectBucketName(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleConnectBucket()}
+                    className="h-9 bg-background/50 text-xs sm:text-sm flex-1"
+                  />
+                  <Button size="sm" onClick={handleConnectBucket} disabled={isConnecting || !connectBucketName.trim()} className="shrink-0">
+                    {isConnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Connect
+                  </Button>
+                </div>
               </div>
             </div>
 
+            {/* Buckets Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {connectedBuckets.length > 0 ? (
-                connectedBuckets.map(bucket => (
-                  <div key={bucket.id} className="relative">
+              {baskets.length > 0 ? (
+                baskets.map(bucket => (
+                  <div key={bucket.name} className="relative">
                     <Card 
                       className="border-border/50 bg-card hover:border-foreground/30 hover:bg-card/80 transition-all cursor-pointer h-full flex flex-col"
-                      onClick={() => fetchBucketContent(bucket.bucket_name)}
+                      onClick={() => fetchBucketContent(bucket.name)}
                     >
                       <CardHeader className="pb-3">
                         <CardTitle className="text-foreground flex items-center gap-3 text-base sm:text-lg truncate">
                           <DatabaseIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground flex-shrink-0"/>
-                          <span className="truncate">{bucket.bucket_name}</span>
+                          <span className="truncate">{bucket.name}</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="flex-grow flex flex-col justify-between">
@@ -461,7 +552,7 @@ export default function PantryPage() {
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleDeleteBucket(bucket.id, bucket.bucket_name)
+                        handleDeleteBucket(bucket.name)
                       }}
                       disabled={isDeleting}
                       className="absolute top-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 bg-background/80 backdrop-blur-sm"
@@ -469,7 +560,7 @@ export default function PantryPage() {
                       {isDeleting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Trash2 className="h-4 w-4" />
+                        <X className="h-4 w-4" />
                       )}
                     </Button>
                   </div>
@@ -480,7 +571,7 @@ export default function PantryPage() {
                     <div className="bg-primary/10 p-4 rounded-full mb-4">
                       <DatabaseIcon className="h-10 w-10 text-primary" />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">No Buckets Connected</h3>
+                    <h3 className="text-lg font-semibold mb-2">No Buckets Found</h3>
                     <p className="text-muted-foreground max-w-xs mx-auto text-sm">
                       Create a new bucket or connect an existing one to get started.
                     </p>

@@ -63,13 +63,22 @@ async function fetchFromPantry(url: string, options?: RequestInit) {
 
     let data: any
     try {
-      data = await response.json()
+      const text = await response.text()
+      if (!text || text.trim() === '') {
+        data = {}
+      } else {
+        data = JSON.parse(text)
+      }
     } catch (parseError) {
       console.error('Error parsing JSON from Pantry:', parseError)
-      return {
-        ok: false,
-        status: 500,
-        error: 'Invalid JSON response from Pantry API',
+      if (response.ok) {
+        data = {}
+      } else {
+        return {
+          ok: false,
+          status: 500,
+          error: 'Invalid JSON response from Pantry API',
+        }
       }
     }
 
