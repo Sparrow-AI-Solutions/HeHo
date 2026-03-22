@@ -1,11 +1,10 @@
 'use server'
 
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const supabase = await createClient()
 
   try {
     // Parse request body
@@ -78,7 +77,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const supabase = await createClient()
 
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
