@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Edit2,
   Save,
-  X
+  X,
+  Trash2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from "sonner"
@@ -87,23 +88,13 @@ export default function PantryPage() {
       const response = await fetch('/api/pantry/buckets')
       
       if (!response.ok) {
-        let errorMessage = 'Failed to fetch buckets'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-        } catch (e) {
-          // Ignore JSON parse error
-        }
-        throw new Error(errorMessage)
+        const text = await response.text()
+        const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
+        throw new Error(errorData.error || `Failed to fetch baskets`)
       }
 
-      let result
-      try {
-        result = await response.json()
-      } catch (e) {
-        throw new Error('Invalid response from server')
-      }
-
+      const text = await response.text()
+      const result = text ? JSON.parse(text) : { data: [] }
       setBaskets(result.data || [])
       setError(null)
     } catch (err: any) {
@@ -118,23 +109,13 @@ export default function PantryPage() {
       const response = await fetch(`/api/pantry?basket=${encodeURIComponent(bucketName)}`)
       
       if (!response.ok) {
-        let errorMessage = 'Failed to fetch bucket'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-        } catch (e) {
-          // Ignore JSON parse error
-        }
-        throw new Error(errorMessage)
+        const text = await response.text()
+        const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
+        throw new Error(errorData.error || `Failed to fetch bucket`)
       }
 
-      let data
-      try {
-        data = await response.json()
-      } catch (e) {
-        throw new Error('Invalid response from server')
-      }
-
+      const text = await response.text()
+      const data = text ? JSON.parse(text) : {}
       setBucketContent(data)
       setSelectedBasket(bucketName)
       setIsEditing(false)
@@ -158,18 +139,13 @@ export default function PantryPage() {
       const response = await fetch('/api/pantry/buckets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bucketName: newBucketName.trim() })
+        body: JSON.stringify({ basket: newBucketName.trim() })
       })
 
       if (!response.ok) {
-        let errorMessage = 'Failed to create bucket'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-        } catch (e) {
-          // Ignore JSON parse error
-        }
-        throw new Error(errorMessage)
+        const text = await response.text()
+        const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
+        throw new Error(errorData.error || `Failed to create bucket`)
       }
 
       toast.success(`Bucket "${newBucketName}" created`)
@@ -191,7 +167,6 @@ export default function PantryPage() {
     
     setIsConnecting(true)
     try {
-      // Just fetch to verify bucket exists
       const response = await fetch(`/api/pantry?basket=${encodeURIComponent(connectBucketName.trim())}`)
       
       if (!response.ok) {
@@ -210,23 +185,18 @@ export default function PantryPage() {
   }
 
   const handleDeleteBucket = async (bucketName: string) => {
-    if (!confirm(`Are you sure you want to delete the bucket "${bucketName}" from your Pantry?`)) return
+    if (!confirm(`Are you sure you want to delete the bucket "${bucketName}"?`)) return
     
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/pantry/buckets?name=${encodeURIComponent(bucketName)}`, { 
+      const response = await fetch(`/api/pantry/buckets?basket=${encodeURIComponent(bucketName)}`, { 
         method: 'DELETE' 
       })
 
       if (!response.ok) {
-        let errorMessage = 'Failed to delete bucket'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-        } catch (e) {
-          // Ignore JSON parse error
-        }
-        throw new Error(errorMessage)
+        const text = await response.text()
+        const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
+        throw new Error(errorData.error || `Failed to delete bucket`)
       }
 
       toast.success(`Bucket "${bucketName}" deleted`)
@@ -251,18 +221,13 @@ export default function PantryPage() {
       const response = await fetch('/api/pantry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ basketName: selectedBasket, data: bucketContent || {} })
+        body: JSON.stringify({ basket: selectedBasket, data: bucketContent || {} })
       })
 
       if (!response.ok) {
-        let errorMessage = 'Failed to save bucket'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-        } catch (e) {
-          // Ignore JSON parse error
-        }
-        throw new Error(errorMessage)
+        const text = await response.text()
+        const errorData = text ? JSON.parse(text) : { error: 'Unknown error' }
+        throw new Error(errorData.error || `Failed to save bucket`)
       }
 
       toast.success('Bucket saved successfully')
@@ -366,14 +331,12 @@ export default function PantryPage() {
             <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage your JSON buckets.</p>
           </div>
           
-          {/* Desktop buttons */}
           <div className="hidden sm:flex gap-2">
             <Button asChild variant="outline" className="border-border h-9 sm:h-10">
               <Link href="/app/settings"><PackageIcon className="mr-2 h-4 w-4"/> Connect Pantry</Link>
             </Button>
           </div>
 
-          {/* Mobile buttons */}
           <div className="sm:hidden flex flex-col gap-2 w-full">
             <Button asChild variant="outline" className="w-full border-border h-9">
               <Link href="/app/settings"><PackageIcon className="mr-2 h-4 w-4"/> Connect Pantry</Link>
@@ -560,7 +523,7 @@ export default function PantryPage() {
                       {isDeleting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <X className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       )}
                     </Button>
                   </div>

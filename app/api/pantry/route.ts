@@ -2,133 +2,56 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-const PANTRY_BASE_URL = 'https://getpantry.cloud/apiv1/pantry'
+const PANTRY_API = 'https://getpantry.cloud/apiv1/pantry'
 
 async function getPantryId() {
-  try {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      throw new Error('Unauthorized: User not authenticated')
-    }
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('pantry_id')
-      .eq('id', user.id)
-      .single()
-
-    if (error) {
-      throw new Error(`Failed to fetch Pantry ID: ${error.message}`)
-    }
-
-    if (!data?.pantry_id) {
-      throw new Error('Pantry ID not configured in user profile')
-    }
-
-    return data.pantry_id
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to retrieve Pantry ID')
+  const supabase = createRouteHandlerClient({ cookies })
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    throw new Error('Unauthorized')
   }
-}
 
-async function fetchFromPantry(url: string, options?: RequestInit) {
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    })
+  const { data, error } = await supabase
+    .from('users')
+    .select('pantry_id')
+    .eq('id', user.id)
+    .single()
 
-    const contentType = response.headers.get('content-type')
-    const isJson = contentType && contentType.includes('application/json')
-
-    if (!isJson) {
-      if (!response.ok) {
-        return {
-          ok: false,
-          status: response.status,
-          error: `Pantry API returned non-JSON response: ${response.status}`,
-        }
-      }
-      return {
-        ok: true,
-        status: response.status,
-        data: {},
-      }
-    }
-
-    let data: any
-    try {
-      const text = await response.text()
-      if (!text || text.trim() === '') {
-        data = {}
-      } else {
-        data = JSON.parse(text)
-      }
-    } catch (parseError) {
-      console.error('Error parsing JSON from Pantry:', parseError)
-      if (response.ok) {
-        data = {}
-      } else {
-        return {
-          ok: false,
-          status: 500,
-          error: 'Invalid JSON response from Pantry API',
-        }
-      }
-    }
-
-    if (!response.ok) {
-      return {
-        ok: false,
-        status: response.status,
-        error: data?.message || `Pantry API error: ${response.status}`,
-      }
-    }
-
-    return {
-      ok: true,
-      status: response.status,
-      data: data || {},
-    }
-  } catch (error: any) {
-    console.error('Network error calling Pantry:', error)
-    return {
-      ok: false,
-      status: 500,
-      error: `Network error: ${error.message}`,
-    }
+  if (error || !data?.pantry_id) {
+    throw new Error('Pantry ID not configured')
   }
+
+  return data.pantry_id
 }
 
 export async function GET(request: Request) {
   try {
     const pantryId = await getPantryId()
     const { searchParams } = new URL(request.url)
-    const basketName = searchParams.get('basket')
+    const basket = searchParams.get('basket')
 
-    let url = `${PANTRY_BASE_URL}/${pantryId}`
-    if (basketName) {
-      url = `${PANTRY_BASE_URL}/${pantryId}/basket/${encodeURIComponent(basketName)}`
+    let url = `${PANTRY_API}/${pantryId}`
+    if (basket) {
+      url = `${PANTRY_API}/${pantryId}/basket/${encodeURIComponent(basket)}`
     }
 
-    const result = await fetchFromPantry(url)
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    })
 
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status })
+    if (!response.ok) {
+      return NextResponse.json({ error: `Pantry API error: ${response.status}` }, { status: response.status })
     }
 
-    return NextResponse.json(result.data, { status: 200 })
+    const text = await response.text()
+    const data = text ? JSON.parse(text) : {}
+
+    return NextResponse.json(data, { status: 200 })
   } catch (error: any) {
     console.error('Error in GET /api/pantry:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch from Pantry' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
 }
 
@@ -138,40 +61,36 @@ export async function POST(request: Request) {
 
     let body: any
     try {
-      body = await request.json()
-    } catch (parseError) {
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      )
+      const text = await request.text()
+      body = text ? JSON.parse(text) : {}
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
-    const { basketName, data } = body
+    const { basket, data } = body
 
-    if (!basketName || typeof basketName !== 'string' || basketName.trim() === '') {
-      return NextResponse.json(
-        { error: 'Basket name is required and must be a non-empty string' },
-        { status: 400 }
-      )
+    if (!basket || typeof basket !== 'string' || basket.trim() === '') {
+      return NextResponse.json({ error: 'Basket name is required' }, { status: 400 })
     }
 
-    const url = `${PANTRY_BASE_URL}/${pantryId}/basket/${encodeURIComponent(basketName.trim())}`
-    const result = await fetchFromPantry(url, {
+    const url = `${PANTRY_API}/${pantryId}/basket/${encodeURIComponent(basket.trim())}`
+    const response = await fetch(url, {
       method: 'POST',
-      body: JSON.stringify(data || {}),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {})
     })
 
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status })
+    if (!response.ok) {
+      return NextResponse.json({ error: `Pantry API error: ${response.status}` }, { status: response.status })
     }
 
-    return NextResponse.json(result.data || { message: 'Basket created/updated successfully' }, { status: 200 })
+    const text = await response.text()
+    const result = text ? JSON.parse(text) : {}
+
+    return NextResponse.json(result, { status: 200 })
   } catch (error: any) {
     console.error('Error in POST /api/pantry:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to create/update basket' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
 }
 
@@ -181,47 +100,40 @@ export async function PUT(request: Request) {
 
     let body: any
     try {
-      body = await request.json()
-    } catch (parseError) {
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      )
+      const text = await request.text()
+      body = text ? JSON.parse(text) : {}
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
 
-    const { basketName, data } = body
+    const { basket, data } = body
 
-    if (!basketName || typeof basketName !== 'string' || basketName.trim() === '') {
-      return NextResponse.json(
-        { error: 'Basket name is required and must be a non-empty string' },
-        { status: 400 }
-      )
+    if (!basket || typeof basket !== 'string' || basket.trim() === '') {
+      return NextResponse.json({ error: 'Basket name is required' }, { status: 400 })
     }
 
     if (!data || typeof data !== 'object') {
-      return NextResponse.json(
-        { error: 'Data must be a valid JSON object' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Data must be a valid JSON object' }, { status: 400 })
     }
 
-    const url = `${PANTRY_BASE_URL}/${pantryId}/basket/${encodeURIComponent(basketName.trim())}`
-    const result = await fetchFromPantry(url, {
+    const url = `${PANTRY_API}/${pantryId}/basket/${encodeURIComponent(basket.trim())}`
+    const response = await fetch(url, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     })
 
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status })
+    if (!response.ok) {
+      return NextResponse.json({ error: `Pantry API error: ${response.status}` }, { status: response.status })
     }
 
-    return NextResponse.json(result.data || { message: 'Basket updated successfully' }, { status: 200 })
+    const text = await response.text()
+    const result = text ? JSON.parse(text) : {}
+
+    return NextResponse.json(result, { status: 200 })
   } catch (error: any) {
     console.error('Error in PUT /api/pantry:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to update basket' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
 }
 
@@ -229,31 +141,22 @@ export async function DELETE(request: Request) {
   try {
     const pantryId = await getPantryId()
     const { searchParams } = new URL(request.url)
-    const basketName = searchParams.get('basket')
+    const basket = searchParams.get('basket')
 
-    if (!basketName || basketName.trim() === '') {
-      return NextResponse.json(
-        { error: 'Basket name is required' },
-        { status: 400 }
-      )
+    if (!basket || basket.trim() === '') {
+      return NextResponse.json({ error: 'Basket name is required' }, { status: 400 })
     }
 
-    const url = `${PANTRY_BASE_URL}/${pantryId}/basket/${encodeURIComponent(basketName.trim())}`
-    const result = await fetchFromPantry(url, { method: 'DELETE' })
+    const url = `${PANTRY_API}/${pantryId}/basket/${encodeURIComponent(basket.trim())}`
+    const response = await fetch(url, { method: 'DELETE' })
 
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status })
+    if (!response.ok) {
+      return NextResponse.json({ error: `Pantry API error: ${response.status}` }, { status: response.status })
     }
 
-    return NextResponse.json(
-      { message: 'Basket deleted successfully' },
-      { status: 200 }
-    )
+    return NextResponse.json({ message: 'Basket deleted successfully' }, { status: 200 })
   } catch (error: any) {
     console.error('Error in DELETE /api/pantry:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete basket' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
 }
