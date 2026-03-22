@@ -107,6 +107,12 @@ export default function PantryPage() {
     router.push(`/app/pantry/${encodeURIComponent(bucketName)}`)
   }
 
+  const requestBucketName = (action: 'create' | 'connect') => {
+    const label = action === 'create' ? 'Enter a new bucket name' : 'Enter an existing bucket name'
+    const value = window.prompt(label, '')
+    return value?.trim() || ''
+  }
+
   const handleCreateBucket = async () => {
     const bucketName = bucketDialogValue.trim()
     if (!bucketName) {
