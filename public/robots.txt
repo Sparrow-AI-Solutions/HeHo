@@ -1,3 +1,23 @@
 User-agent: *
 Allow: /
+Disallow: /app/
+Disallow: /login
+Disallow: /signup
+Disallow: /share/
+Disallow: /deploy/
+Disallow: /chat/
+
 Sitemap: https://heho.vercel.app/sitemap.xml
+
+# Google specific rules
+User-agent: Googlebot
+Allow: /
+Disallow: /app/
+Disallow: /login
+Disallow: /signup
+Disallow: /share/
+Disallow: /deploy/
+Disallow: /chat/
+
+# Crawl delay
+Crawl-delay: 1

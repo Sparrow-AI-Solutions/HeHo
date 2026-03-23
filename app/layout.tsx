@@ -14,8 +14,8 @@ export const metadata: Metadata = {
   keywords: [
     "AI", 
     "HeHo",
-    "Backend", 
-    "Orchestrator", 
+    "AI chatbot builder",
+    "Backend orchestrator", 
     "OpenRouter", 
     "Supabase", 
     "No-code", 
@@ -40,7 +40,20 @@ export const metadata: Metadata = {
     "Next.js chatbot",
     "React chatbot",
     "Supabase database",
-    "OpenRouter API"
+    "OpenRouter API",
+    "autonomous backend",
+    "data-driven AI",
+    "AI chatbot for startups",
+    "database chatbot",
+    "REST API",
+    "chatbot management",
+    "AI models",
+    "no-code platform",
+    "open-source chatbot",
+    "AI-powered database",
+    "chatbot deployment",
+    "AI integration",
+    "business automation"
   ],
   robots: {
     index: true,
