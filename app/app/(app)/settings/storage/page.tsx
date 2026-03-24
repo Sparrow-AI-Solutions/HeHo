@@ -8,6 +8,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Trash2, Loader2, CheckCircle, XCircle } from "lucide-react"
 
+const normalizeStorageColumns = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((col): col is string => typeof col === 'string' && col.trim().length > 0)
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return []
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((col): col is string => typeof col === 'string' && col.trim().length > 0)
+      }
+    } catch {
+      // not JSON string
+    }
+    return trimmed.split(',').map((item) => item.trim()).filter(Boolean)
+  }
+  return []
+}
+
 export default function StorageSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +71,7 @@ export default function StorageSettingsPage() {
           setError("Failed to load user data.")
         } else if (userData) {
           setConnectedBucket(userData.storage_bucket || "")
-          setStorageColumns(userData.storage_columns || [])
+          setStorageColumns(normalizeStorageColumns(userData.storage_columns))
           setPantryId(userData.pantry_id || "")
         }
       }
@@ -207,6 +227,7 @@ export default function StorageSettingsPage() {
     if(updateError) {
         setError(updateError.message)
     } else {
+        setStorageColumns(normalizeStorageColumns(storageColumns))
         setSuccess("Storage columns saved successfully!")
     }
     setIsSavingColumns(false)
