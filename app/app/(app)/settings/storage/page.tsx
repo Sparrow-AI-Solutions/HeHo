@@ -8,6 +8,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Trash2, Loader2, CheckCircle, XCircle } from "lucide-react"
 
+const normalizeStorageColumns = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((col): col is string => typeof col === 'string' && col.trim().length > 0)
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return []
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((col): col is string => typeof col === 'string' && col.trim().length > 0)
+      }
+    } catch {
+      // not JSON string
+    }
+    return trimmed.split(',').map((item) => item.trim()).filter(Boolean)
+  }
+  return []
+}
+
 export default function StorageSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +71,7 @@ export default function StorageSettingsPage() {
           setError("Failed to load user data.")
         } else if (userData) {
           setConnectedBucket(userData.storage_bucket || "")
-          setStorageColumns(userData.storage_columns || [])
+          setStorageColumns(normalizeStorageColumns(userData.storage_columns))
           setPantryId(userData.pantry_id || "")
         }
       }
@@ -207,6 +227,7 @@ export default function StorageSettingsPage() {
     if(updateError) {
         setError(updateError.message)
     } else {
+        setStorageColumns(normalizeStorageColumns(storageColumns))
         setSuccess("Storage columns saved successfully!")
     }
     setIsSavingColumns(false)
@@ -260,9 +281,9 @@ export default function StorageSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
             {pantryId && (
-                <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-md">
-                    <p>Connected to Pantry: <strong className="text-green-600 dark:text-green-400 truncate">{pantryId}</strong></p>
-                    <Button onClick={handleDisconnectPantry} variant="destructive" disabled={isDisconnectingPantry} size="sm">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-green-500/10 border border-green-500/30 rounded-md">
+                    <p className="break-all">Connected to Pantry: <strong className="text-green-600 dark:text-green-400">{pantryId}</strong></p>
+                    <Button onClick={handleDisconnectPantry} variant="destructive" disabled={isDisconnectingPantry} size="sm" className="w-full sm:w-auto">
                         {isDisconnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Disconnect
                     </Button>
                 </div>

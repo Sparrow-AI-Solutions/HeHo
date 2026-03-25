@@ -29,6 +29,18 @@ const integrations = [
     status: "Active",
   },
   {
+    name: "Telegram Bot API",
+    description: "Connect HeHo chatbots to Telegram using webhook-based delivery on Vercel",
+    features: [
+      "Webhook-first architecture (no polling needed)",
+      "Connect BotFather token per chatbot",
+      "Restrict access with allowed Telegram user/chat IDs",
+      "Automatic webhook registration from chatbot settings",
+      "Instant request flow: Telegram → HeHo webhook → AI reply",
+    ],
+    status: "Active",
+  },
+  {
     name: "REST API",
     description: "Programmatic access to HeHo's chatbot management, database operations, and autonomous backend control",
     features: [
