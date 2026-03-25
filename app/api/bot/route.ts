@@ -5,8 +5,32 @@ type TelegramUpdate = {
   message?: {
     text?: string
     chat?: { id?: number }
+    from?: {
+      first_name?: string
+      last_name?: string
+      username?: string
+    }
   }
 }
+
+type ChatHistoryMessage = {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+const MAX_HISTORY_MESSAGES = 12
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __telegramHistoryStore__: Map<string, ChatHistoryMessage[]> | undefined
+}
+
+const telegramHistoryStore = globalThis.__telegramHistoryStore__ || new Map<string, ChatHistoryMessage[]>()
+if (!globalThis.__telegramHistoryStore__) {
+  globalThis.__telegramHistoryStore__ = telegramHistoryStore
+}
+
+const getHistoryKey = (chatbotId: string, chatId: number) => `${chatbotId}:${chatId}`
 
 const parseAllowedUsers = (value: unknown): string[] => {
   if (!value) return []
@@ -52,6 +76,10 @@ export async function POST(request: NextRequest) {
     const update = (await request.json()) as TelegramUpdate
     const incomingText = update?.message?.text?.trim()
     const chatId = update?.message?.chat?.id
+    const senderName = [
+      update?.message?.from?.first_name,
+      update?.message?.from?.last_name,
+    ].filter(Boolean).join(' ') || update?.message?.from?.username || 'User'
 
     if (!incomingText || !chatId) {
       return NextResponse.json({ ok: true })
@@ -77,19 +105,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    const historyKey = getHistoryKey(chatbotId, chatId)
+    const shouldResetHistory = incomingText.toLowerCase() === '/start'
+    const existingHistory = shouldResetHistory ? [] : telegramHistoryStore.get(historyKey) || []
+
+    if (shouldResetHistory) {
+      telegramHistoryStore.delete(historyKey)
+    }
+
     const chatApiRes = await fetch(`${origin}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chatbotId,
         message: incomingText,
-        history: [],
+        history: existingHistory,
         isPublic: true,
       }),
     })
 
     const chatApiResult = await chatApiRes.json()
     const reply = chatApiResult?.reply || chatApiResult?.content || 'Thanks! I received your message.'
+
+    const updatedHistory: ChatHistoryMessage[] = [
+      ...existingHistory,
+      { role: 'user', content: `${senderName}: ${incomingText}` },
+      { role: 'assistant', content: String(reply) },
+    ].slice(-MAX_HISTORY_MESSAGES)
+    telegramHistoryStore.set(historyKey, updatedHistory)
 
     await sendTelegramMessage(botToken, chatId, reply)
     return NextResponse.json({ ok: true })
@@ -98,4 +141,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Telegram webhook failed' }, { status: 500 })
   }
 }
-
