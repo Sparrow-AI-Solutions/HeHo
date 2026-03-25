@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
-  Loader2, Edit, PlusCircle, Trash2, Save, X, ArrowLeft, Eye, Download, Upload, CornerDownLeft, Maximize2
+  Loader2, Edit, PlusCircle, Trash2, Save, X, ArrowLeft, Eye, Download, Upload, CornerDownLeft, Maximize2, Crop
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,6 +42,14 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
   const [newFileUrl, setNewFileUrl] = useState(fileUrl);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState(false);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [cropAspect, setCropAspect] = useState<'free' | '1:1' | 'landscape' | 'portrait'>('free');
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
+  const [isCropping, setIsCropping] = useState(false);
+  const cropPreviewRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const fileInputRef = useCallback((input: HTMLInputElement | null) => {
     if (input) {
       input.addEventListener('change', (e) => {
@@ -57,6 +65,11 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
     setNewFileUrl(fileUrl);
     setPreviewError(null);
     setUploadMode(false);
+    setIsCropOpen(false);
+    setCropAspect('free');
+    setCropZoom(1);
+    setCropX(0);
+    setCropY(0);
   }, [fileUrl, isOpen]);
 
   if (!isOpen) return null;
@@ -81,6 +94,12 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
   };
 
   const fileType = getFileType(fileUrl);
+  const cropAspectClass = {
+    'free': 'aspect-[4/3]',
+    '1:1': 'aspect-square',
+    'landscape': 'aspect-[16/9]',
+    'portrait': 'aspect-[3/4]'
+  }[cropAspect];
 
   const renderPreview = () => {
     switch (fileType) {
@@ -152,6 +171,107 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
     }
   };
 
+  const handleCropImage = async () => {
+    setIsCropping(true);
+    setPreviewError(null);
+    try {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.src = fileUrl;
+
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('Unable to load image for cropping.'));
+      });
+
+      const sourceWidth = image.naturalWidth;
+      const sourceHeight = image.naturalHeight;
+      const sourceAspect = sourceWidth / sourceHeight;
+      const targetAspect = cropAspect === '1:1' ? 1 : cropAspect === 'landscape' ? 16 / 9 : cropAspect === 'portrait' ? 3 / 4 : sourceAspect;
+
+      const outputWidth = sourceWidth;
+      const outputHeight = Math.round(outputWidth / targetAspect);
+
+      const minZoomForAspect = targetAspect > sourceAspect ? targetAspect / sourceAspect : sourceAspect / targetAspect;
+      const safeZoom = Math.max(cropZoom, minZoomForAspect);
+      const baseScale = Math.max(outputWidth / sourceWidth, outputHeight / sourceHeight);
+      const scale = baseScale * safeZoom;
+      const drawnWidth = sourceWidth * scale;
+      const drawnHeight = sourceHeight * scale;
+
+      const maxOffsetX = Math.max(0, (drawnWidth - outputWidth) / 2);
+      const maxOffsetY = Math.max(0, (drawnHeight - outputHeight) / 2);
+      const normalizedX = (cropX / 100) * maxOffsetX;
+      const normalizedY = (cropY / 100) * maxOffsetY;
+
+      const dx = (outputWidth - drawnWidth) / 2 - normalizedX;
+      const dy = (outputHeight - drawnHeight) / 2 - normalizedY;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Unable to create crop canvas.');
+
+      ctx.drawImage(image, dx, dy, drawnWidth, drawnHeight);
+
+      const originalFileName = fileUrl.split('/').pop()?.split('?')[0] || 'image';
+      const baseName = originalFileName.replace(/\.[^/.]+$/, '');
+
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 0.92));
+      if (!blob) throw new Error('Failed to generate cropped image.');
+
+      const croppedFile = new File([blob], `${baseName}-cropped.png`, { type: 'image/png' });
+      onUpload(croppedFile);
+      setIsCropOpen(false);
+    } catch (err) {
+      console.error('Crop failed:', err);
+      setPreviewError(err instanceof Error ? err.message : 'Failed to crop image');
+    } finally {
+      setIsCropping(false);
+    }
+  };
+
+  const clampCropOffset = (value: number) => Math.min(100, Math.max(-100, value));
+
+  const handleCropPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    dragStateRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: cropX,
+      originY: cropY
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleCropPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStateRef.current || !cropPreviewRef.current) return;
+
+    const rect = cropPreviewRef.current.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const deltaX = event.clientX - dragStateRef.current.startX;
+    const deltaY = event.clientY - dragStateRef.current.startY;
+    const nextX = dragStateRef.current.originX + (deltaX / (rect.width / 2)) * 100;
+    const nextY = dragStateRef.current.originY + (deltaY / (rect.height / 2)) * 100;
+
+    setCropX(clampCropOffset(nextX));
+    setCropY(clampCropOffset(nextY));
+  };
+
+  const handleCropPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    dragStateRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handleCropWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const delta = event.deltaY < 0 ? 0.08 : -0.08;
+    setCropZoom((prev) => Math.min(3, Math.max(1, Number((prev + delta).toFixed(2)))));
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -175,6 +295,20 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
             ) : (
               <div className="flex justify-center">
                 {renderPreview()}
+              </div>
+            )}
+            {fileType === 'image' && (
+              <div className="mt-3 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCropOpen(true)}
+                  className="gap-2"
+                  disabled={isSaving || isUploading}
+                >
+                  <Crop className="h-4 w-4" />
+                  Crop image
+                </Button>
               </div>
             )}
           </div>
@@ -269,6 +403,96 @@ function FilePreviewModal({ isOpen, fileUrl, onClose, onSave, onUpload, isSaving
           )}
         </div>
       </div>
+
+      {isCropOpen && fileType === 'image' && (
+        <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-background border rounded-lg shadow-xl w-full max-w-3xl p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold">Crop Image</h3>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsCropOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+              <div
+                ref={cropPreviewRef}
+                className={cn("w-full border rounded-md bg-black/70 overflow-hidden relative touch-none cursor-grab active:cursor-grabbing", cropAspectClass)}
+                onPointerDown={handleCropPointerDown}
+                onPointerMove={handleCropPointerMove}
+                onPointerUp={handleCropPointerUp}
+                onPointerCancel={handleCropPointerUp}
+                onWheel={handleCropWheel}
+              >
+                <img
+                  src={fileUrl}
+                  alt="Crop preview"
+                  className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+                  style={{
+                    transform: `translate(${cropX}%, ${cropY}%) scale(${cropZoom})`,
+                    transformOrigin: 'center center'
+                  }}
+                />
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/30" />
+                  <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/30" />
+                  <div className="absolute top-1/3 left-0 right-0 h-px bg-white/30" />
+                  <div className="absolute top-2/3 left-0 right-0 h-px bg-white/30" />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground">Aspect ratio</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { key: 'free', label: 'Custom' },
+                      { key: '1:1', label: '1:1' },
+                      { key: 'landscape', label: 'Landscape' },
+                      { key: 'portrait', label: 'Portrait' },
+                    ].map((option) => (
+                      <Button
+                        key={option.key}
+                        size="sm"
+                        variant={cropAspect === option.key ? 'default' : 'outline'}
+                        onClick={() => setCropAspect(option.key as typeof cropAspect)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground">Zoom ({cropZoom.toFixed(2)}x)</p>
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.05}
+                    value={cropZoom}
+                    onChange={(e) => setCropZoom(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Drag image to reposition. Use mouse wheel or slider to zoom.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCropOpen(false)} disabled={isCropping}>
+                Cancel
+              </Button>
+              <Button onClick={handleCropImage} disabled={isCropping || isUploading} className="gap-2">
+                {isCropping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crop className="h-4 w-4" />}
+                Apply crop & upload
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
