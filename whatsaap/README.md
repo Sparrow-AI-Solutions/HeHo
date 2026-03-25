@@ -40,3 +40,9 @@ User (WhatsApp) → Railway bot → HeHo `/api/aichat` → reply back to WhatsAp
 
 ## Important production note
 Current HeHo QR/status APIs use in-memory store. For multi-instance production, replace with DB/Redis.
+
+## Railway crash fix (missing Chrome libs)
+This template now includes a `Dockerfile` that installs Chromium + required Linux libs (including `libglib2.0-0`) so `whatsapp-web.js` can launch correctly on Railway.
+
+## Security / same-user guarantee
+QR/status callbacks now require `Authorization: Bearer <HEHO_API_KEY>`, and HeHo validates chatbot ownership before updating QR/status.

@@ -14,14 +14,18 @@ if (!HEHO_API || !HEHO_API_KEY || !CHATBOT_ID) {
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   }
 })
 
 async function notifyDeployed() {
   await fetch(`${HEHO_API}/whatsapp/deployed`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${HEHO_API_KEY}`
+    },
     body: JSON.stringify({ chatbot_id: CHATBOT_ID })
   })
 }
@@ -30,7 +34,10 @@ client.on('qr', async (qr) => {
   qrcode.generate(qr, { small: true })
   await fetch(`${HEHO_API}/whatsapp/qr`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${HEHO_API_KEY}`
+    },
     body: JSON.stringify({ chatbot_id: CHATBOT_ID, qr })
   })
 })
@@ -39,7 +46,10 @@ client.on('ready', async () => {
   console.log('WhatsApp connected ✅')
   await fetch(`${HEHO_API}/whatsapp/connected`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${HEHO_API_KEY}`
+    },
     body: JSON.stringify({ chatbot_id: CHATBOT_ID, status: 'connected' })
   })
 })
