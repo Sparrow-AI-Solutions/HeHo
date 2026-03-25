@@ -356,6 +356,8 @@ function ChatbotSettingsPage() {
       `&HEHO_API=${encodeURIComponent(hehoApiBase)}` +
       `&HEHO_API_KEY=${encodeURIComponent(hehoApiKey)}` +
       `&CHATBOT_ID=${encodeURIComponent(chatbotId)}`
+
+    return url
   }
 
   const handleDeployWhatsAppTemplate = () => {
