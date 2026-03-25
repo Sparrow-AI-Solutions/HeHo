@@ -48,6 +48,7 @@ const THEMES = [
 ]
 
 const DEFAULT_TABLES = ['products', 'leads', 'customer_queries', 'sales'];
+const DEFAULT_RAILWAY_DEPLOY_URL = 'https://railway.com/deploy/GxAsWe?referralCode=dTEQTr&utm_medium=integration&utm_source=template&utm_campaign=generic'
 
 function ChatbotSettingsPage() {
   const searchParams = useSearchParams()
@@ -95,6 +96,7 @@ function ChatbotSettingsPage() {
   const [telegramAllowedUsers, setTelegramAllowedUsers] = useState('')
   const [telegramAllowAllUsers, setTelegramAllowAllUsers] = useState(true)
   const [railwayTemplateId, setRailwayTemplateId] = useState('')
+  const [railwayDeployUrl, setRailwayDeployUrl] = useState(DEFAULT_RAILWAY_DEPLOY_URL)
   const [hehoApiKey, setHehoApiKey] = useState('')
   const [whatsappQr, setWhatsappQr] = useState<string | null>(null)
   const [whatsappStatus, setWhatsappStatus] = useState<'waiting' | 'deploying' | 'deployed' | 'waiting_scan' | 'connected'>('waiting')
@@ -336,23 +338,32 @@ function ChatbotSettingsPage() {
     return () => clearInterval(interval)
   }, [activeTab, chatbotId])
 
-  const handleDeployWhatsAppTemplate = () => {
-    if (!railwayTemplateId.trim()) {
-      setError('Please enter your Railway Template ID.')
-      return
-    }
-    if (!hehoApiKey.trim()) {
-      setError('Please generate your HeHo API key in Settings before deploying WhatsApp.')
-      return
-    }
+  const buildRailwayDeployLink = () => {
+    const hasTemplateId = railwayTemplateId.trim().length > 0
+    const hasDeployUrl = railwayDeployUrl.trim().length > 0
+
+    if (!hasTemplateId && !hasDeployUrl) return null
+    if (!hehoApiKey.trim()) return null
 
     const hehoApiBase = `${window.location.origin}/api`
-    const url =
-      `https://railway.app/new/template?template=${encodeURIComponent(railwayTemplateId.trim())}` +
-      `&envs=HEHO_API,HEHO_API_KEY,CHATBOT_ID` +
+    const baseUrl = hasDeployUrl
+      ? railwayDeployUrl.trim()
+      : `https://railway.app/new/template?template=${encodeURIComponent(railwayTemplateId.trim())}`
+
+    const separator = baseUrl.includes('?') ? '&' : '?'
+    const url = `${baseUrl}${separator}` +
+      `envs=HEHO_API,HEHO_API_KEY,CHATBOT_ID` +
       `&HEHO_API=${encodeURIComponent(hehoApiBase)}` +
       `&HEHO_API_KEY=${encodeURIComponent(hehoApiKey)}` +
       `&CHATBOT_ID=${encodeURIComponent(chatbotId)}`
+  }
+
+  const handleDeployWhatsAppTemplate = () => {
+    const url = buildRailwayDeployLink()
+    if (!url) {
+      setError('Please enter Railway Deploy URL/Template ID and make sure HeHo API Key exists in your settings.')
+      return
+    }
 
     setWhatsappStatus('deploying')
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -826,7 +837,17 @@ function ChatbotSettingsPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-foreground">Railway Template ID</label>
+                        <label className="block text-sm font-medium text-foreground">Railway Deploy URL (Button Link)</label>
+                        <Input
+                          placeholder="https://railway.com/deploy/..."
+                          value={railwayDeployUrl}
+                          onChange={(e) => setRailwayDeployUrl(e.target.value)}
+                          className='bg-background/50 border-border/50 text-foreground text-sm rounded-xl'
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-foreground">Railway Template ID (Optional)</label>
                         <Input
                           placeholder="your-railway-template-id"
                           value={railwayTemplateId}
@@ -838,7 +859,19 @@ function ChatbotSettingsPage() {
                       <div className="text-xs bg-background/60 border border-border/50 rounded-xl p-3 space-y-1 text-muted-foreground">
                         <p><strong>Step flow:</strong> Deploy on Railway → QR appears below → scan WhatsApp → status becomes connected.</p>
                         <p>Template receives: <code>HEHO_API</code>, <code>HEHO_API_KEY</code>, <code>CHATBOT_ID</code>.</p>
+                        <p>If Deploy URL is set, HeHo uses that button link directly.</p>
                       </div>
+
+                      {buildRailwayDeployLink() && (
+                        <a
+                          href={buildRailwayDeployLink()!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex justify-center w-full"
+                        >
+                          <img src="https://railway.com/button.svg" alt="Deploy on Railway" className="h-12" />
+                        </a>
+                      )}
 
                       <Button onClick={handleDeployWhatsAppTemplate} className='w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-semibold'>
                         <ExternalLink className="h-4 w-4 mr-2" />

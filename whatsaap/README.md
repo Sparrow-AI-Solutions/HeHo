@@ -14,8 +14,9 @@ This folder is a ready template for Railway deployment.
 
 ## 3) Connect from HeHo app
 1. Open your chatbot settings → Deploy → **Intreagtion**.
-2. In **Connect to WhatsApp (Railway Template)** paste the Template ID.
+2. In **Connect to WhatsApp (Railway Template)** paste your Railway Deploy URL button (or Template ID).
 3. Click **Deploy WhatsApp on Railway**.
+4. HeHo already includes a default hardcoded Railway deploy URL button link for quick start.
 
 HeHo sends these env vars automatically in the Railway URL:
 - `HEHO_API` (your app API base, e.g. `https://heho.vercel.app/api`)
