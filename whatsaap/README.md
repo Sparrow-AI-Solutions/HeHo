@@ -55,4 +55,4 @@ HeHo also supports WAHA direct connection APIs:
 
 Configure in Vercel:
 - `WAHA_URL=https://waha-production-0fb7.up.railway.app`
-- `WAHA_API_KEY=00000000000000000000000000000000`
+- `WAHA_API_KEY=d1c64646dfbc495db8741dae2cb22594`

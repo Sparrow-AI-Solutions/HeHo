@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label'
 import { formatDistanceToNow } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
 
+const HEHO_WH_RAILWAY_DEPLOY_URL = 'https://railway.com/deploy/YE1e0Y?referralCode=jl7dmK&utm_medium=integration&utm_source=template&utm_campaign=generic'
+
 const MODELS = [
     { id: "arcee-ai/trinity-large-preview:free", name: "Arcee AI: Trinity Large Preview" },
     { id: "arcee-ai/trinity-mini:free", name: "Arcee AI: Trinity Mini" },
@@ -95,8 +97,7 @@ function ChatbotSettingsPage() {
   const [telegramBotToken, setTelegramBotToken] = useState('')
   const [telegramAllowedUsers, setTelegramAllowedUsers] = useState('')
   const [telegramAllowAllUsers, setTelegramAllowAllUsers] = useState(true)
-  const [wahaQrUrl, setWahaQrUrl] = useState<string | null>(null)
-  const [isConnectingWaha, setIsConnectingWaha] = useState(false)
+  const [hehoApiKey, setHehoApiKey] = useState('')
 
   const deployUrl = share ? `${window.location.origin}/deploy/${share.share_token}` : ''
 
@@ -144,6 +145,9 @@ function ChatbotSettingsPage() {
         setTelegramBotToken(chatbotData.telegram_id || '')
         setTelegramAllowAllUsers(normalizedTelegramUsers === '' || normalizedTelegramUsers === '*')
         setTelegramAllowedUsers(normalizedTelegramUsers === '*' ? '' : normalizedTelegramUsers)
+
+        const { data: userData } = await supabase.from('users').select('heho_api_key').eq('id', user.id).single()
+        setHehoApiKey(userData?.heho_api_key || '')
 
         setFormData({
           name: chatbotData.name,
@@ -302,26 +306,24 @@ function ChatbotSettingsPage() {
     }
   }
 
-  const handleConnectWaha = async () => {
-    setIsConnectingWaha(true)
-    setError(null)
-    try {
-      const response = await fetch('/api/whatsapp/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatbotId }),
-      })
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to connect WAHA session')
-      }
-      setWahaQrUrl(result.qrUrl)
-      setSuccess('WAHA session started. Scan QR below to connect.')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect WhatsApp')
-    } finally {
-      setIsConnectingWaha(false)
-    }
+  const buildHehoWhRailwayLink = () => {
+    const url = new URL(HEHO_WH_RAILWAY_DEPLOY_URL)
+    const chatbotIdValue = chatbotId || ''
+    const hehoApiKeyValue = hehoApiKey || ''
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://heho.vercel.app'
+    const hehoApiValue = `${appOrigin}/api`
+
+    url.searchParams.set('envs', 'HEHO_API,HEHO_API_KEY,CHATBOT_ID')
+    url.searchParams.set('HEHO_API', hehoApiValue)
+    url.searchParams.set('HEHO_API_KEY', hehoApiKeyValue)
+    url.searchParams.set('CHATBOT_ID', chatbotIdValue)
+
+    return url.toString()
+  }
+
+  const handleHostHehoWhOnRailway = () => {
+    const deployLink = buildHehoWhRailwayLink()
+    window.open(deployLink, '_blank', 'noopener,noreferrer')
   }
 
   const renderDataSourceSelect = (index: 1 | 2 | 3) => (
@@ -790,19 +792,19 @@ function ChatbotSettingsPage() {
                           Starts WAHA session and returns QR directly from your configured WAHA server.
                         </p>
                       </div>
+                      <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-2 text-sm text-muted-foreground">
+                        <p><strong>Step 1:</strong> Click the host button below to deploy your own HeHo-WH server on Railway.</p>
+                        <p><strong>Step 2:</strong> After deployment, open Railway service settings and generate/copy your Web Access URL.</p>
+                        <p><strong>Step 3:</strong> Visit that URL and scan the QR code with your phone to connect WhatsApp.</p>
+                        <p className="text-xs">HeHo sends <code>HEHO_API</code>, <code>HEHO_API_KEY</code>, and <code>CHATBOT_ID</code> as deployment env vars.</p>
+                      </div>
                       <Button
-                        onClick={handleConnectWaha}
-                        disabled={isConnectingWaha}
-                        className='w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-semibold'
+                        onClick={handleHostHehoWhOnRailway}
+                        className='w-full rounded-xl h-12 font-semibold'
+                        variant="outline"
                       >
-                        {isConnectingWaha ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                        Connect WhatsApp
+                        Host HeHo-WH on Railway
                       </Button>
-                      {wahaQrUrl && (
-                        <div className="rounded-xl border border-border/50 bg-background/40 p-4 flex justify-center">
-                          <img src={wahaQrUrl} alt="WAHA QR" className="rounded-lg border border-border/50" />
-                        </div>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
