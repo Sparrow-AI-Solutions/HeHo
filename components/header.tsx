@@ -12,7 +12,7 @@ const navItems = [
   { href: "/app/dashboard", icon: BarChart3, label: "Dashboard" },
   { href: "/app/chatbots", icon: MessageSquare, label: "Chatbots" },
   { href: "/app/database", icon: Database, label: "Database" },
-  { href: "/app/pantry", icon: Package, label: "Pantry" },
+  { href: "/app/pantry", icon: Package, label: "ZSON" },
   { href: "/app/usage", icon: Zap, label: "Usage" },
 ]
 
