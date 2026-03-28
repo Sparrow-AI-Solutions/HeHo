@@ -95,12 +95,6 @@ function ChatbotSettingsPage() {
   const [telegramBotToken, setTelegramBotToken] = useState('')
   const [telegramAllowedUsers, setTelegramAllowedUsers] = useState('')
   const [telegramAllowAllUsers, setTelegramAllowAllUsers] = useState(true)
-  const [railwayTemplateId, setRailwayTemplateId] = useState('')
-  const [railwayDeployUrl, setRailwayDeployUrl] = useState(DEFAULT_RAILWAY_DEPLOY_URL)
-  const [hehoApiKey, setHehoApiKey] = useState('')
-  const [whatsappQr, setWhatsappQr] = useState<string | null>(null)
-  const [whatsappStatus, setWhatsappStatus] = useState<'waiting' | 'deploying' | 'deployed' | 'waiting_scan' | 'connected'>('waiting')
-  const [isPollingWhatsApp, setIsPollingWhatsApp] = useState(false)
   const [wahaQrUrl, setWahaQrUrl] = useState<string | null>(null)
   const [isConnectingWaha, setIsConnectingWaha] = useState(false)
 
@@ -139,7 +133,6 @@ function ChatbotSettingsPage() {
         }
 
         setChatbot(chatbotData)
-        setHehoApiKey(userData?.heho_api_key || '')
         const rawTelegramUsers = chatbotData.telegram_user || ''
         const normalizedTelegramUsers =
           typeof rawTelegramUsers === 'string'
@@ -307,70 +300,6 @@ function ChatbotSettingsPage() {
     } finally {
       setSavingTelegram(false)
     }
-  }
-
-  useEffect(() => {
-    const pollWhatsAppStatus = async () => {
-      if (!activeTab || activeTab !== 'deploy') return
-      setIsPollingWhatsApp(true)
-      try {
-        const [statusRes, qrRes] = await Promise.all([
-          fetch(`/api/whatsapp/status?chatbot_id=${chatbotId}`),
-          fetch(`/api/whatsapp/get-qr?chatbot_id=${chatbotId}`)
-        ])
-
-        if (statusRes.ok) {
-          const statusData = await statusRes.json()
-          setWhatsappStatus(statusData.status || 'waiting')
-        }
-
-        if (qrRes.ok) {
-          const qrData = await qrRes.json()
-          setWhatsappQr(qrData.qr || null)
-        }
-      } catch (err) {
-        console.error('Failed to poll WhatsApp status:', err)
-      } finally {
-        setIsPollingWhatsApp(false)
-      }
-    }
-
-    pollWhatsAppStatus()
-    const interval = setInterval(pollWhatsAppStatus, 3000)
-    return () => clearInterval(interval)
-  }, [activeTab, chatbotId])
-
-  const buildRailwayDeployLink = () => {
-    const hasTemplateId = railwayTemplateId.trim().length > 0
-    const hasDeployUrl = railwayDeployUrl.trim().length > 0
-
-    if (!hasTemplateId && !hasDeployUrl) return null
-    if (!hehoApiKey.trim()) return null
-
-    const hehoApiBase = `${window.location.origin}/api`
-    const baseUrl = hasDeployUrl
-      ? railwayDeployUrl.trim()
-      : `https://railway.app/new/template?template=${encodeURIComponent(railwayTemplateId.trim())}`
-
-    const separator = baseUrl.includes('?') ? '&' : '?'
-    const url = `${baseUrl}${separator}` +
-      `envs=HEHO_API,HEHO_API_KEY,CHATBOT_ID` +
-      `&HEHO_API=${encodeURIComponent(hehoApiBase)}` +
-      `&HEHO_API_KEY=${encodeURIComponent(hehoApiKey)}` +
-      `&CHATBOT_ID=${encodeURIComponent(chatbotId)}`
-
-    return url
-  }
-
-  const handleDeployWhatsAppTemplate = () => {
-    const url = buildRailwayDeployLink()
-    if (!url) {
-      setError('Please enter Railway Deploy URL/Template ID and make sure HeHo API Key exists in your settings.')
-      return
-    }
-
-    setWhatsappStatus('deploying')
-    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const handleConnectWaha = async () => {
@@ -852,87 +781,6 @@ function ChatbotSettingsPage() {
                         {savingTelegram ? <Loader2 className='h-4 w-4 mr-2 animate-spin' /> : null}
                         Save Telegram Integration
                       </Button>
-                    </div>
-
-                    <div className="pt-4 border-t border-border/50 space-y-4">
-                      <div>
-                        <h3 className="text-base font-semibold">Connect to WhatsApp (Railway Template)</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          User deploys their own WhatsApp bot on Railway with your HeHo API + Chatbot ID auto-filled.
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-foreground">Railway Deploy URL (Button Link)</label>
-                        <Input
-                          placeholder="https://railway.com/deploy/..."
-                          value={railwayDeployUrl}
-                          onChange={(e) => setRailwayDeployUrl(e.target.value)}
-                          className='bg-background/50 border-border/50 text-foreground text-sm rounded-xl'
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-foreground">Railway Template ID (Optional)</label>
-                        <Input
-                          placeholder="your-railway-template-id"
-                          value={railwayTemplateId}
-                          onChange={(e) => setRailwayTemplateId(e.target.value)}
-                          className='bg-background/50 border-border/50 text-foreground text-sm rounded-xl'
-                        />
-                      </div>
-
-                      <div className="text-xs bg-background/60 border border-border/50 rounded-xl p-3 space-y-1 text-muted-foreground">
-                        <p><strong>Step flow:</strong> Deploy on Railway → QR appears below → scan WhatsApp → status becomes connected.</p>
-                        <p>Template receives: <code>HEHO_API</code>, <code>HEHO_API_KEY</code>, <code>CHATBOT_ID</code>.</p>
-                        <p>If Deploy URL is set, HeHo uses that button link directly.</p>
-                      </div>
-
-                      {buildRailwayDeployLink() && (
-                        <a
-                          href={buildRailwayDeployLink()!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex justify-center w-full"
-                        >
-                          <img src="https://railway.com/button.svg" alt="Deploy on Railway" className="h-12" />
-                        </a>
-                      )}
-
-                      <Button onClick={handleDeployWhatsAppTemplate} className='w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-semibold'>
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Deploy WhatsApp on Railway
-                      </Button>
-
-                      <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">
-                            Status: {
-                              whatsappStatus === 'connected'
-                                ? '✅ Connected'
-                                : whatsappStatus === 'waiting_scan'
-                                  ? '⏳ Waiting for QR scan'
-                                  : whatsappStatus === 'deployed'
-                                    ? '🚀 Bot deployed - waiting for QR'
-                                    : whatsappStatus === 'deploying'
-                                      ? '📦 Deploy started in Railway'
-                                      : '🕒 Waiting'
-                            }
-                          </p>
-                          {isPollingWhatsApp && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                        </div>
-                        {whatsappQr ? (
-                          <div className="flex justify-center">
-                            <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(whatsappQr)}`}
-                              alt="WhatsApp QR"
-                              className="rounded-lg border border-border/50"
-                            />
-                          </div>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">QR will appear here once your Railway bot sends it to HeHo.</p>
-                        )}
-                      </div>
                     </div>
 
                     <div className="pt-4 border-t border-border/50 space-y-4">

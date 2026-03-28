@@ -29,7 +29,12 @@ export async function POST(request: NextRequest) {
 
     if (!createSessionRes.ok) {
       const text = await createSessionRes.text()
-      return NextResponse.json({ error: `Failed to create WAHA session: ${text}` }, { status: 500 })
+      const lowerText = text.toLowerCase()
+      const alreadyExists = lowerText.includes('already') && lowerText.includes('exist')
+
+      if (!alreadyExists) {
+        return NextResponse.json({ error: `Failed to create WAHA session: ${text}` }, { status: 500 })
+      }
     }
 
     const qrUrl = `${WAHA_URL}/api/sessions/${encodeURIComponent(sessionName)}/qr`
@@ -38,4 +43,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to connect WhatsApp' }, { status: 500 })
   }
 }
-
