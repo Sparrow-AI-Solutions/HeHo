@@ -4,6 +4,30 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+const normalizeStorageColumns = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((col): col is string => typeof col === 'string' && col.trim().length > 0)
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return []
+
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((col): col is string => typeof col === 'string' && col.trim().length > 0)
+      }
+    } catch {
+      // value is not JSON, fall back to comma-separated parsing
+    }
+
+    return trimmed.split(',').map((item) => item.trim()).filter(Boolean)
+  }
+
+  return []
+}
+
 export async function GET(request: Request) {
   const cookieStore = cookies()
 
@@ -37,7 +61,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ storageColumns: [], storageBucket: "" })
     }
 
-    const storageColumns = userData.storage_columns || []
+    const storageColumns = normalizeStorageColumns(userData.storage_columns)
     const storageBucket = userData.storage_bucket || ""
 
     return NextResponse.json({ storageColumns, storageBucket })
