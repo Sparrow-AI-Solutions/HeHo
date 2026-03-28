@@ -794,10 +794,15 @@ function ChatbotSettingsPage() {
                       </div>
                       <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-2 text-sm text-muted-foreground">
                         <p><strong>Important:</strong> Make sure you have generated your HeHo API key from Settings before continuing.</p>
+                        <p><strong>If you see “Chatbot not found”:</strong> check that <code>CHATBOT_ID</code> and <code>HEHO_API_KEY</code> are correct in Railway env vars.</p>
                         <p><strong>Step 1:</strong> Click the host button below to deploy your own HeHo-WH server on Railway.</p>
                         <p><strong>Step 2:</strong> After deployment, open Railway service settings and generate/copy your Web Access URL.</p>
                         <p><strong>Step 3:</strong> Visit that URL and scan the QR code with your phone to connect WhatsApp.</p>
                         <p className="text-xs">HeHo sends <code>HEHO_API</code>, <code>HEHO_API_KEY</code>, and <code>CHATBOT_ID</code> as deployment env vars.</p>
+                        <p className="text-xs">Current <code>CHATBOT_ID</code>: <code>{chatbotId}</code></p>
+                        <p className="text-xs">
+                          Current <code>HEHO_API_KEY</code>: <code>{hehoApiKey ? hehoApiKey : 'Not found — generate it from Settings first.'}</code>
+                        </p>
                       </div>
                       <Button
                         onClick={handleHostHehoWhOnRailway}
