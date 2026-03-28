@@ -146,8 +146,8 @@ function ChatbotSettingsPage() {
         setTelegramAllowAllUsers(normalizedTelegramUsers === '' || normalizedTelegramUsers === '*')
         setTelegramAllowedUsers(normalizedTelegramUsers === '*' ? '' : normalizedTelegramUsers)
 
-        const { data: userData } = await supabase.from('users').select('heho_api_key').eq('id', user.id).single()
-        setHehoApiKey(userData?.heho_api_key || '')
+        const { data: hehoUserData } = await supabase.from('users').select('heho_api_key').eq('id', user.id).single()
+        setHehoApiKey(hehoUserData?.heho_api_key || '')
 
         setFormData({
           name: chatbotData.name,
