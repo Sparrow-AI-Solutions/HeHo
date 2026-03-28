@@ -10,6 +10,26 @@ import { CheckCircle, AlertCircle, Loader2, LogOut, Key, Database, User, Shield,
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 
+const normalizeStorageColumns = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((col): col is string => typeof col === "string" && col.trim().length > 0)
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    if (!trimmed) return []
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((col): col is string => typeof col === "string" && col.trim().length > 0)
+      }
+    } catch {
+      // Not JSON; fall back to comma-separated format
+    }
+    return trimmed.split(",").map((part) => part.trim()).filter(Boolean)
+  }
+  return []
+}
+
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -58,8 +78,7 @@ export default function SettingsPage() {
         setHehoApiKey(data.heho_api_key || "")
         setStorageBucket(data.storage_bucket || "")
         setPantryId(data.pantry_id || "")
-        const cols = data.storage_columns
-        setStorageColumns(Array.isArray(cols) ? cols : [])
+        setStorageColumns(normalizeStorageColumns(data.storage_columns))
       }
       setLoading(false)
     }
@@ -232,6 +251,8 @@ export default function SettingsPage() {
       if (!response.ok) {
         throw new Error(result.error);
       }
+      setStorageBucket(result?.data?.storage_bucket || storageBucket)
+      setStorageColumns(normalizeStorageColumns(result?.data?.storage_columns))
       setSuccess("Storage bucket connected successfully!");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to connect storage bucket");
@@ -272,6 +293,7 @@ export default function SettingsPage() {
       if (!response.ok) {
         throw new Error(result.error)
       }
+      setStorageColumns(normalizeStorageColumns(result?.data?.storage_columns))
       setSuccess("Storage columns saved successfully!")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save storage columns")
@@ -369,9 +391,9 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                   {pantryId && (
-                      <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-md">
-                          <p className="text-sm">Connected to Pantry: <strong className="text-green-400 truncate">{pantryId}</strong></p>
-                          <Button onClick={handleDisconnectPantry} variant="destructive" disabled={isDisconnectingPantry} size="sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-green-500/10 border border-green-500/30 rounded-md">
+                          <p className="text-sm break-all">Connected to Pantry: <strong className="text-green-400">{pantryId}</strong></p>
+                          <Button onClick={handleDisconnectPantry} variant="destructive" disabled={isDisconnectingPantry} size="sm" className="w-full sm:w-auto">
                               {isDisconnectingPantry ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null} Disconnect
                           </Button>
                       </div>
