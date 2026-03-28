@@ -46,3 +46,13 @@ This template now includes a `Dockerfile` that installs Chromium + required Linu
 
 ## Security / same-user guarantee
 QR/status callbacks now require `Authorization: Bearer <HEHO_API_KEY>`, and HeHo validates chatbot ownership before updating QR/status.
+
+## WAHA direct mode (hardcoded for now)
+HeHo also supports WAHA direct connection APIs:
+- `POST /api/whatsapp/connect`
+- `POST /api/whatsapp/webhook/[userId]?chatbotId=...`
+- `POST /api/whatsapp/send`
+
+Configure in Vercel:
+- `WAHA_URL=https://waha-production-0fb7.up.railway.app`
+- `WAHA_API_KEY=00000000000000000000000000000000`

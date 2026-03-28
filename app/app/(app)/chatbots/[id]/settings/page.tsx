@@ -101,6 +101,8 @@ function ChatbotSettingsPage() {
   const [whatsappQr, setWhatsappQr] = useState<string | null>(null)
   const [whatsappStatus, setWhatsappStatus] = useState<'waiting' | 'deploying' | 'deployed' | 'waiting_scan' | 'connected'>('waiting')
   const [isPollingWhatsApp, setIsPollingWhatsApp] = useState(false)
+  const [wahaQrUrl, setWahaQrUrl] = useState<string | null>(null)
+  const [isConnectingWaha, setIsConnectingWaha] = useState(false)
 
   const deployUrl = share ? `${window.location.origin}/deploy/${share.share_token}` : ''
 
@@ -369,6 +371,28 @@ function ChatbotSettingsPage() {
 
     setWhatsappStatus('deploying')
     window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleConnectWaha = async () => {
+    setIsConnectingWaha(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/whatsapp/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatbotId }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to connect WAHA session')
+      }
+      setWahaQrUrl(result.qrUrl)
+      setSuccess('WAHA session started. Scan QR below to connect.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to connect WhatsApp')
+    } finally {
+      setIsConnectingWaha(false)
+    }
   }
 
   const renderDataSourceSelect = (index: 1 | 2 | 3) => (
@@ -909,6 +933,28 @@ function ChatbotSettingsPage() {
                           <p className="text-xs text-muted-foreground">QR will appear here once your Railway bot sends it to HeHo.</p>
                         )}
                       </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border/50 space-y-4">
+                      <div>
+                        <h3 className="text-base font-semibold">Connect WhatsApp (WAHA Direct)</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Starts WAHA session and returns QR directly from your configured WAHA server.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleConnectWaha}
+                        disabled={isConnectingWaha}
+                        className='w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-semibold'
+                      >
+                        {isConnectingWaha ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                        Connect WhatsApp
+                      </Button>
+                      {wahaQrUrl && (
+                        <div className="rounded-xl border border-border/50 bg-background/40 p-4 flex justify-center">
+                          <img src={wahaQrUrl} alt="WAHA QR" className="rounded-lg border border-border/50" />
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
