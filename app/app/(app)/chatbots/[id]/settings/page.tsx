@@ -793,6 +793,7 @@ function ChatbotSettingsPage() {
                         </p>
                       </div>
                       <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-2 text-sm text-muted-foreground">
+                        <p><strong>Important:</strong> Make sure you have generated your HeHo API key from Settings before continuing.</p>
                         <p><strong>Step 1:</strong> Click the host button below to deploy your own HeHo-WH server on Railway.</p>
                         <p><strong>Step 2:</strong> After deployment, open Railway service settings and generate/copy your Web Access URL.</p>
                         <p><strong>Step 3:</strong> Visit that URL and scan the QR code with your phone to connect WhatsApp.</p>
