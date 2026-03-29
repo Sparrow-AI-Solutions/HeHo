@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
-import { Loader2, AlertCircle, ArrowLeft, Database, Copy, Check, Share2, Globe, User, Bot } from "lucide-react"
+import { Loader2, AlertCircle, ArrowLeft, Database, Copy, Check, Share2, Globe, User, Bot, ExternalLink } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -50,6 +50,7 @@ const THEMES = [
 ]
 
 const DEFAULT_TABLES = ['products', 'leads', 'customer_queries', 'sales'];
+const DEFAULT_RAILWAY_DEPLOY_URL = 'https://railway.com/deploy/GxAsWe?referralCode=dTEQTr&utm_medium=integration&utm_source=template&utm_campaign=generic'
 
 function ChatbotSettingsPage() {
   const searchParams = useSearchParams()
@@ -129,6 +130,7 @@ function ChatbotSettingsPage() {
 
         // Fetch chatbot data
         const { data: chatbotData } = await supabase.from("chatbots").select("*").eq("id", chatbotId).eq("user_id", user.id).single()
+        const { data: userData } = await supabase.from('users').select('heho_api_key').eq('id', user.id).single()
 
         if (!chatbotData) {
           router.push("/app/dashboard")
