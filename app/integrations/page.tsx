@@ -29,6 +29,31 @@ const integrations = [
     status: "Active",
   },
   {
+    name: "Telegram Bot API",
+    description: "Connect HeHo chatbots to Telegram using webhook-based delivery on Vercel",
+    features: [
+      "Webhook-first architecture (no polling needed)",
+      "Connect BotFather token per chatbot",
+      "Restrict access with allowed Telegram user/chat IDs",
+      "Automatic webhook registration from chatbot settings",
+      "Instant request flow: Telegram → HeHo webhook → AI reply",
+    ],
+    status: "Active",
+  },
+  {
+    name: "WhatsApp",
+    description: "Powered by WAHA with a self-hosted deployment model so your WhatsApp bridge stays private",
+    features: [
+      "Powered by WAHA (WhatsApp HTTP API bridge)",
+      "Self-hosted Railway deployment for privacy and control",
+      "Deploy with template and auto-filled HEHO_API_KEY + CHATBOT_ID env vars",
+      "After deploy, return to HeHo app and scan QR directly in chatbot settings",
+      "Save deployed server URL once, then HeHo loads QR/status automatically",
+      "Messages relay securely through HeHo AI backend",
+    ],
+    status: "Active",
+  },
+  {
     name: "REST API",
     description: "Programmatic access to HeHo's chatbot management, database operations, and autonomous backend control",
     features: [

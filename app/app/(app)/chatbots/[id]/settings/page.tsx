@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label'
 import { formatDistanceToNow } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
 
+const HEHO_WH_RAILWAY_DEPLOY_URL = 'https://railway.com/deploy/YE1e0Y?referralCode=jl7dmK&utm_medium=integration&utm_source=template&utm_campaign=generic'
+
 const MODELS = [
     { id: "arcee-ai/trinity-large-preview:free", name: "Arcee AI: Trinity Large Preview" },
     { id: "arcee-ai/trinity-mini:free", name: "Arcee AI: Trinity Mini" },
@@ -87,9 +89,18 @@ function ChatbotSettingsPage() {
 
   const [deploying, setDeploying] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [savingTelegram, setSavingTelegram] = useState(false)
   const [expires, setExpires] = useState(false)
   const [expiryDate, setExpiryDate] = useState<Date | undefined>(undefined)
   const [countdown, setCountdown] = useState('')
+  const [telegramBotToken, setTelegramBotToken] = useState('')
+  const [telegramAllowedUsers, setTelegramAllowedUsers] = useState('')
+  const [telegramAllowAllUsers, setTelegramAllowAllUsers] = useState(true)
+  const [hehoApiKey, setHehoApiKey] = useState('')
+  const [whatsappServerUrl, setWhatsappServerUrl] = useState('')
+  const [savingWhatsappServerUrl, setSavingWhatsappServerUrl] = useState(false)
+  const [whatsappQrUrl, setWhatsappQrUrl] = useState<string | null>(null)
+  const [whatsappStatus, setWhatsappStatus] = useState<'waiting_server_url' | 'waiting_scan' | 'connected'>('waiting_server_url')
 
   const deployUrl = share ? `${window.location.origin}/deploy/${share.share_token}` : ''
 
@@ -125,6 +136,22 @@ function ChatbotSettingsPage() {
         }
 
         setChatbot(chatbotData)
+        const rawTelegramUsers = chatbotData.telegram_user || ''
+        const normalizedTelegramUsers =
+          typeof rawTelegramUsers === 'string'
+            ? rawTelegramUsers
+            : Array.isArray(rawTelegramUsers)
+              ? rawTelegramUsers.join(',')
+              : ''
+
+        setTelegramBotToken(chatbotData.telegram_id || '')
+        setTelegramAllowAllUsers(normalizedTelegramUsers === '' || normalizedTelegramUsers === '*')
+        setTelegramAllowedUsers(normalizedTelegramUsers === '*' ? '' : normalizedTelegramUsers)
+        setWhatsappServerUrl(chatbotData.server_url || '')
+
+        const { data: hehoUserData } = await supabase.from('users').select('heho_api_key').eq('id', user.id).single()
+        setHehoApiKey(hehoUserData?.heho_api_key || '')
+
         setFormData({
           name: chatbotData.name,
           goal: chatbotData.goal,
@@ -162,6 +189,33 @@ function ChatbotSettingsPage() {
 
     loadData()
   }, [chatbotId, router, supabase])
+
+  useEffect(() => {
+    if (!chatbotId || !whatsappServerUrl) return
+
+    let cancelled = false
+    const fetchRemoteState = async () => {
+      try {
+        const response = await fetch(`/api/whatsapp/remote-state?chatbotId=${encodeURIComponent(chatbotId)}`, {
+          cache: 'no-store',
+        })
+        const data = await response.json()
+        if (!response.ok || cancelled) return
+
+        setWhatsappStatus(data.status || 'waiting_scan')
+        setWhatsappQrUrl(data.qr_url || null)
+      } catch (err) {
+        console.error('Failed to fetch WhatsApp remote state:', err)
+      }
+    }
+
+    fetchRemoteState()
+    const interval = setInterval(fetchRemoteState, 6000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [chatbotId, whatsappServerUrl])
 
   const handleSave = async () => {
     setSaving(true)
@@ -231,6 +285,113 @@ function ChatbotSettingsPage() {
 </script>`
 
   const iframeCode = `<iframe src="${deployUrl}" style="width: 100%; height: 600px; border: none; border-radius: 8px;" allow="microphone; camera"></iframe>`
+
+  const handleSaveTelegramIntegration = async () => {
+    if (!telegramBotToken.trim()) {
+      setError('Please enter your Telegram bot token from BotFather.')
+      return
+    }
+
+    if (!telegramAllowAllUsers && !telegramAllowedUsers.trim()) {
+      setError('Enter at least one Telegram user/chat id or enable Allow all users.')
+      return
+    }
+
+    setSavingTelegram(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const normalizedAllowedUsers = telegramAllowAllUsers
+        ? '*'
+        : telegramAllowedUsers
+            .split(',')
+            .map((id) => id.trim())
+            .filter(Boolean)
+            .join(',')
+
+      const { error: updateError } = await supabase
+        .from('chatbots')
+        .update({
+          telegram_id: telegramBotToken.trim(),
+          telegram_user: normalizedAllowedUsers,
+        })
+        .eq('id', chatbotId)
+
+      if (updateError) throw updateError
+
+      const webhookBase = window.location.origin
+      const webhookUrl = `${webhookBase}/api/bot?chatbotId=${chatbotId}&token=${encodeURIComponent(telegramBotToken.trim())}`
+      const setWebhookRes = await fetch(`https://api.telegram.org/bot${telegramBotToken.trim()}/setWebhook?url=${encodeURIComponent(webhookUrl)}`)
+      const setWebhookResult = await setWebhookRes.json()
+      if (!setWebhookRes.ok || !setWebhookResult?.ok) {
+        throw new Error(setWebhookResult?.description || 'Failed to register Telegram webhook')
+      }
+
+      setSuccess('Telegram integration saved and webhook connected successfully!')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save Telegram integration')
+    } finally {
+      setSavingTelegram(false)
+    }
+  }
+
+  const buildHehoWhRailwayLink = () => {
+    const url = new URL(HEHO_WH_RAILWAY_DEPLOY_URL)
+    const chatbotIdValue = chatbotId || ''
+    const hehoApiKeyValue = hehoApiKey || ''
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://heho.vercel.app'
+    const hehoApiValue = `${appOrigin}/api`
+
+    url.searchParams.set('envs', 'HEHO_API,HEHO_API_KEY,CHATBOT_ID')
+    url.searchParams.set('HEHO_API', hehoApiValue)
+    url.searchParams.set('HEHO_API_KEY', hehoApiKeyValue)
+    url.searchParams.set('CHATBOT_ID', chatbotIdValue)
+
+    return url.toString()
+  }
+
+  const handleHostHehoWhOnRailway = () => {
+    const deployLink = buildHehoWhRailwayLink()
+    window.open(deployLink, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleSaveWhatsappServerUrl = async () => {
+    if (!hehoApiKey) {
+      setError('Generate your HeHo API key in Settings before saving server URL.')
+      return
+    }
+    if (!whatsappServerUrl.trim()) {
+      setError('Please enter your deployed Railway server URL.')
+      return
+    }
+
+    setSavingWhatsappServerUrl(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch('/api/whatsapp/server-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${hehoApiKey}`,
+        },
+        body: JSON.stringify({
+          chatbotId,
+          serverUrl: whatsappServerUrl.trim(),
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to save server URL')
+
+      setWhatsappServerUrl(result.server_url || whatsappServerUrl.trim())
+      setSuccess('Server URL saved. QR/status will now load in this app.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save WhatsApp server URL')
+    } finally {
+      setSavingWhatsappServerUrl(false)
+    }
+  }
 
   const renderDataSourceSelect = (index: 1 | 2 | 3) => (
     <div className='space-y-2'>
@@ -615,10 +776,13 @@ function ChatbotSettingsPage() {
               <TabsContent value='api'>
                 <Card className='border-border/50 bg-card/50 rounded-2xl shadow-xl'>
                   <CardHeader>
-                    <CardTitle>HeHo API Integration</CardTitle>
+                    <CardTitle>Intreagtion</CardTitle>
                     <CardDescription>Integrate your chatbot with the HeHo API</CardDescription>
                   </CardHeader>
                   <CardContent className='space-y-4'>
+                    <div>
+                      <h3 className="text-base font-semibold">HeHo API Integration</h3>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Chatbot ID</label>
                       <div className='flex gap-2'>
@@ -631,6 +795,131 @@ function ChatbotSettingsPage() {
                     <p className='text-sm text-muted-foreground font-medium'>
                       For more information on integrating with the HeHo API, refer to the <a href="/api-documentation" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">API Documentation Page</a>.
                     </p>
+
+                    <div className="pt-4 border-t border-border/50 space-y-4">
+                      <div>
+                        <h3 className="text-base font-semibold">Connect to Telegram Bot</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Connect this chatbot to Telegram using your BotFather bot token and optional allowed user/chat IDs.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-foreground">Telegram Bot Token</label>
+                        <Input
+                          type="password"
+                          placeholder="123456:AA..."
+                          value={telegramBotToken}
+                          onChange={(e) => setTelegramBotToken(e.target.value)}
+                          className='bg-background/50 border-border/50 text-foreground text-sm rounded-xl'
+                        />
+                        <p className="text-xs text-muted-foreground">Use the bot token you got from @BotFather.</p>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-background/40">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Allow all users</p>
+                          <p className="text-xs text-muted-foreground">If enabled, any Telegram user can chat with this bot.</p>
+                        </div>
+                        <Switch checked={telegramAllowAllUsers} onCheckedChange={setTelegramAllowAllUsers} />
+                      </div>
+
+                      {!telegramAllowAllUsers && (
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-foreground">Allowed Telegram User/Chat IDs</label>
+                          <Textarea
+                            placeholder="123456789, 987654321"
+                            value={telegramAllowedUsers}
+                            onChange={(e) => setTelegramAllowedUsers(e.target.value)}
+                            className='bg-background/50 border-border/50 text-foreground text-sm rounded-xl'
+                          />
+                          <p className="text-xs text-muted-foreground">Comma-separated IDs. Only these users/chats can message this bot.</p>
+                        </div>
+                      )}
+
+                      <div className="bg-background/60 border border-border/50 rounded-xl p-3 text-xs text-muted-foreground space-y-2">
+                        <p><strong>Webhook flow:</strong> User → Telegram → HeHo `/api/bot` webhook → HeHo AI → Telegram reply.</p>
+                        <p>After saving, HeHo auto-runs Telegram <code>setWebhook</code> using this bot token.</p>
+                      </div>
+
+                      <Button
+                        onClick={handleSaveTelegramIntegration}
+                        disabled={savingTelegram}
+                        className='w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-semibold'
+                      >
+                        {savingTelegram ? <Loader2 className='h-4 w-4 mr-2 animate-spin' /> : null}
+                        Save Telegram Integration
+                      </Button>
+                    </div>
+
+                    <div className="pt-4 border-t border-border/50 space-y-4">
+                      <div>
+                        <h3 className="text-base font-semibold">Connect WhatsApp (WAHA Direct)</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Deploy your own HeHo-WH server, then return here to scan QR directly inside HeHo.
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-2 text-sm text-muted-foreground">
+                        <p><strong>Important:</strong> Make sure you have generated your HeHo API key from Settings before continuing.</p>
+                        <p><strong>If you see “Chatbot not found”:</strong> check that <code>CHATBOT_ID</code> and <code>HEHO_API_KEY</code> are correct in Railway env vars.</p>
+                        <p><strong>Step 1:</strong> Click the host button below to deploy your own HeHo-WH server on Railway.</p>
+                        <p><strong>Step 2:</strong> After deployment, copy your deployed Railway service URL and paste it below.</p>
+                        <p><strong>Step 3:</strong> Return to this page and scan QR shown in HeHo. Once connected, status becomes connected here.</p>
+                        <p className="text-xs">HeHo sends <code>HEHO_API</code>, <code>HEHO_API_KEY</code>, and <code>CHATBOT_ID</code> as deployment env vars.</p>
+                        <p className="text-xs">Current <code>CHATBOT_ID</code>: <code>{chatbotId}</code></p>
+                        <p className="text-xs">
+                          Current <code>HEHO_API_KEY</code>: <code>{hehoApiKey ? hehoApiKey : 'Not found — generate it from Settings first.'}</code>
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleHostHehoWhOnRailway}
+                        className='w-full rounded-xl h-12 font-semibold'
+                        variant="outline"
+                      >
+                        Host HeHo-WH on Railway
+                      </Button>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-foreground">Deployed Site URL</label>
+                        <Input
+                          placeholder="https://your-heho-wh.up.railway.app"
+                          value={whatsappServerUrl}
+                          onChange={(e) => setWhatsappServerUrl(e.target.value)}
+                          className='bg-background/50 border-border/50 text-foreground text-sm rounded-xl'
+                        />
+                        <Button
+                          onClick={handleSaveWhatsappServerUrl}
+                          disabled={savingWhatsappServerUrl}
+                          className='w-full rounded-xl h-11 font-semibold'
+                        >
+                          {savingWhatsappServerUrl ? <Loader2 className='h-4 w-4 mr-2 animate-spin' /> : null}
+                          Save Deployed URL
+                        </Button>
+                      </div>
+
+                      <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Status:{' '}
+                          <span className="font-medium text-foreground">
+                            {whatsappStatus === 'connected'
+                              ? '✅ Connected'
+                              : whatsappStatus === 'waiting_scan'
+                                ? '⏳ Waiting for QR scan'
+                                : '🕒 Waiting for deployed URL'}
+                          </span>
+                        </p>
+                        {whatsappQrUrl && whatsappStatus !== 'connected' ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={whatsappQrUrl}
+                            alt="WhatsApp QR"
+                            className="w-56 h-56 rounded-lg border border-border/50 bg-white p-2"
+                          />
+                        ) : (
+                          <p className="text-xs text-muted-foreground">QR will appear here after URL is saved and session is ready.</p>
+                        )}
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
