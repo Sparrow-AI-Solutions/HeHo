@@ -906,7 +906,7 @@ function ChatbotSettingsPage() {
                             {whatsappStatus === 'connected'
                               ? '✅ Connected'
                               : whatsappStatus === 'waiting_scan'
-                                ? '⏳ Waiting for QR scan (If QR code dint appere your chatbot is connected to you number or some error at server side.)'
+                                ? '⏳ Waiting for QR scan (No QR? Already connected or server error.)'
                                 : '🕒 Waiting for deployed URL'}
                           </span>
                         </p>
