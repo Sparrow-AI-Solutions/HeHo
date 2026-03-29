@@ -46,8 +46,9 @@ const integrations = [
     features: [
       "Powered by WAHA (WhatsApp HTTP API bridge)",
       "Self-hosted Railway deployment for privacy and control",
-      "Deploy with template and auto-filled HEHO_API_KEY + CHATBOT_ID",
-      "Scan QR and connect from your own hosted WhatsApp service",
+      "Deploy with template and auto-filled HEHO_API_KEY + CHATBOT_ID env vars",
+      "After deploy, return to HeHo app and scan QR directly in chatbot settings",
+      "Save deployed server URL once, then HeHo loads QR/status automatically",
       "Messages relay securely through HeHo AI backend",
     ],
     status: "Active",
