@@ -4,20 +4,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { Bot, Braces, Eye, Send, Sparkles, Database, MessageSquarePlus, PanelLeft, KeyRound } from 'lucide-react'
+import { Bot, Braces, Eye, Send, Sparkles, Database, MessageSquarePlus, Shield, CheckCircle2, Loader2 } from 'lucide-react'
 
 const MODEL_OPTIONS = [
-  { id: 'arcee-ai/trinity-large-preview:free', name: 'Arcee AI: Trinity Large Preview' },
-  { id: 'arcee-ai/trinity-mini:free', name: 'Arcee AI: Trinity Mini' },
-  { id: 'qwen/qwen3-next-80b-a3b-instruct:free', name: 'Qwen 3 Next 80B Instruct' },
-  { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 Llama 3.1 405B' },
-  { id: 'openrouter/hunter-alpha', name: 'OpenRouter: Hunter Alpha' },
+  { id: 'arcee-ai/trinity-large-preview:free', name: 'Arcee Trinity Large' },
+  { id: 'arcee-ai/trinity-mini:free', name: 'Arcee Trinity Mini' },
+  { id: 'qwen/qwen3-next-80b-a3b-instruct:free', name: 'Qwen 3 Next 80B' },
+  { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 405B' },
 ]
 
 const STARTER_CODE = `<!doctype html>
@@ -25,28 +22,29 @@ const STARTER_CODE = `<!doctype html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ARAS Site</title>
+  <title>Beach Preview</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: Inter, Arial, sans-serif; background: #0b1020; color: #fff; }
-    .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-    .card { max-width: 720px; border-radius: 20px; padding: 30px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15); }
-    h1 { margin-top: 0; }
-    input, textarea { width: 100%; margin: 8px 0; padding: 10px; border-radius: 10px; border: 1px solid #2f3a61; background: #101935; color: #fff; }
-    button { border: 0; padding: 12px 20px; border-radius: 999px; font-weight: 600; cursor: pointer; }
+    body { margin: 0; font-family: Inter, Arial, sans-serif; background: linear-gradient(#a7e1ff,#f8e6be); color: #10233f; }
+    .sun { width: 120px; height: 120px; border-radius: 50%; background: #ffd87a; filter: blur(2px); margin: 30px auto; }
+    .card { width: min(760px, calc(100vw - 32px)); margin: 0 auto; background: rgba(255,255,255,.75); border: 1px solid rgba(0,0,0,.08); border-radius: 22px; padding: 24px; }
+    h1 { margin: 8px 0; font-size: 42px; }
+    p { color: #31557c; line-height: 1.6; }
+    button { border: 0; border-radius: 999px; padding: 12px 20px; background: #0f7ddf; color: #fff; font-weight: 600; }
   </style>
 </head>
 <body>
-  <section class="wrap">
-    <div class="card">
-      <h1>ARAS AI Website</h1>
-      <p>This is your single-file website workspace powered by HeHo + OpenRouter.</p>
-    </div>
+  <div class="sun"></div>
+  <section class="card">
+    <h1>Connect to HeHo API</h1>
+    <p>Preview area for your generated one-file website. ARAS updates this live from the Code tab.</p>
+    <button>Verify & Connect</button>
   </section>
 </body>
 </html>`
 
 type Message = { role: 'assistant' | 'user'; content: string }
+type Task = { id: string; label: string; status: 'running' | 'done' }
 
 export default function CodeWorkspacePage() {
   const supabase = createClient()
@@ -55,15 +53,12 @@ export default function CodeWorkspacePage() {
   const [chatbotId, setChatbotId] = useState<string>('new')
   const [tableName, setTableName] = useState('new')
   const [model, setModel] = useState(MODEL_OPTIONS[0].id)
-  const [openRouterKey, setOpenRouterKey] = useState('')
-  const [allowNewTable, setAllowNewTable] = useState(true)
-  const [allowNewChatbot, setAllowNewChatbot] = useState(true)
-  const [chatMode, setChatMode] = useState<'build' | 'edit'>('build')
+  const [secretMode, setSecretMode] = useState(true)
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('preview')
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hi, I am ARAS. I can build and re-edit your one-file website, then tell you chatbot + table steps for HeHo.' },
-  ])
-  const [messageInput, setMessageInput] = useState('Create a modern landing page with a contact form and explain required chatbot/table setup.')
+  const [messages, setMessages] = useState<Message[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [working, setWorking] = useState(false)
+  const [messageInput, setMessageInput] = useState('')
   const [code, setCode] = useState(STARTER_CODE)
 
   useEffect(() => {
@@ -71,15 +66,13 @@ export default function CodeWorkspacePage() {
       const { data: auth } = await supabase.auth.getUser()
       if (!auth.user) return
 
-      const [{ data: bots }, { data: userTables }, { data: profile }] = await Promise.all([
+      const [{ data: bots }, { data: userTables }] = await Promise.all([
         supabase.from('chatbots').select('id,name').eq('user_id', auth.user.id).order('created_at', { ascending: false }),
         supabase.from('user_connected_tables').select('table_name').eq('user_id', auth.user.id),
-        supabase.from('profiles').select('openrouter_key_encrypted').eq('id', auth.user.id).single(),
       ])
 
       setChatbots(bots || [])
       setTables((userTables || []).map((t: { table_name: string }) => t.table_name))
-      setOpenRouterKey(profile?.openrouter_key_encrypted || '')
     }
 
     load()
@@ -87,129 +80,138 @@ export default function CodeWorkspacePage() {
 
   const selectedChatbot = useMemo(() => chatbots.find((bot) => bot.id === chatbotId), [chatbots, chatbotId])
 
-  const sendMessage = () => {
-    if (!messageInput.trim()) return
+  const runTaskAnimation = async (items: string[]) => {
+    const initial = items.map((label, idx) => ({ id: `${Date.now()}-${idx}`, label, status: (idx === 0 ? 'running' : 'done') as 'running' | 'done' }))
+    setTasks(initial)
+    for (let i = 0; i < initial.length; i += 1) {
+      setTasks((prev) => prev.map((t, idx) => {
+        if (idx < i) return { ...t, status: 'done' }
+        if (idx === i) return { ...t, status: 'running' }
+        return t
+      }))
+      await new Promise((r) => setTimeout(r, 550))
+    }
+    setTasks((prev) => prev.map((t) => ({ ...t, status: 'done' })))
+  }
+
+  const sendMessage = async () => {
+    if (!messageInput.trim() || working) return
     const prompt = messageInput.trim()
     setMessages((prev) => [...prev, { role: 'user', content: prompt }])
+    setWorking(true)
+
+    await runTaskAnimation([
+      'Analyze request',
+      'Generate / edit single-file website',
+      'Plan chatbot + table linkage',
+      'Return summary and updated output',
+    ])
 
     let nextCode = code
     const lower = prompt.toLowerCase()
 
-    if (lower.includes('contact form') && !code.includes('<form')) {
-      nextCode = code.replace('</div>\n  </section>', `<form onsubmit="event.preventDefault(); alert('Submit this to your HeHo chatbot flow/API.');">\n        <input placeholder="Your name" />\n        <input type="email" placeholder="Your email" />\n        <textarea placeholder="How can we help?"></textarea>\n        <button type="submit">Send</button>\n      </form>\n    </div>\n  </section>`)
+    if (lower.includes('contact') && !code.includes('<form')) {
+      nextCode = code.replace('</section>\n</body>', `<form style="margin-top:16px;display:grid;gap:8px;">\n      <input placeholder="Name" style="padding:10px;border-radius:10px;border:1px solid #d8e2ec;"/>\n      <input placeholder="Email" style="padding:10px;border-radius:10px;border:1px solid #d8e2ec;"/>\n      <textarea placeholder="Message" style="padding:10px;border-radius:10px;border:1px solid #d8e2ec;"></textarea>\n      <button type="button">Send</button>\n    </form>\n  </section>\n</body>`)
     }
 
-    if (lower.includes('pricing') && !code.includes('Pricing')) {
-      nextCode = nextCode.replace('</section>\n</body>', '</section>\n  <section style="padding:24px;text-align:center;"><h2>Pricing</h2><p>Starter, Growth, Enterprise</p></section>\n</body>')
+    if (lower.includes('dark')) {
+      nextCode = nextCode.replace('linear-gradient(#a7e1ff,#f8e6be)', 'linear-gradient(#0a0f1f,#1b1f2f)')
     }
 
-    if (nextCode !== code) {
-      setCode(nextCode)
-    }
+    if (nextCode !== code) setCode(nextCode)
 
     const reply = [
-      `ARAS plan (${chatMode} mode):`,
-      `• Model: ${model}`,
-      `• Chatbot: ${selectedChatbot?.name || (allowNewChatbot ? 'Create new chatbot' : 'Use existing only')}`,
-      `• Database: ${tableName === 'new' ? (allowNewTable ? 'Create new table allowed' : 'Pick existing table') : `Use existing table: ${tableName}`}`,
-      `• OpenRouter key loaded: ${openRouterKey ? 'Yes' : 'No (add key in side panel)'}`,
-      nextCode !== code
-        ? '• I updated the code in the Code tab based on your request.'
-        : '• I analyzed current code and gave workflow guidance. Ask for specific UI blocks to auto-edit.',
+      `ARAS ${secretMode ? 'Secret Mode' : 'Standard Mode'} complete.`,
+      `Model: ${MODEL_OPTIONS.find((m) => m.id === model)?.name || model}`,
+      `Chatbot: ${selectedChatbot?.name || 'Create new chatbot'}`,
+      `Database: ${tableName === 'new' ? 'Create new table label' : tableName}`,
+      nextCode !== code ? 'I updated the code and synced preview.' : 'No code changes yet; ask for exact section edits.',
     ].join('\n')
 
-    setTimeout(() => {
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
-    }, 250)
-
+    setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
     setMessageInput('')
+    setWorking(false)
   }
 
+  const showWelcome = messages.length === 0
+
   return (
-    <div className="h-[calc(100vh-7rem)] max-w-[1400px] mx-auto px-4 sm:px-6 pb-6">
-      <div className="h-full grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-4">
-        <Card className="h-full flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-7rem)] max-w-[1450px] mx-auto px-4 sm:px-6 pb-6">
+      <div className="h-full grid grid-cols-1 xl:grid-cols-[460px_1fr] gap-4">
+        <Card className="h-full flex flex-col overflow-hidden border-border/70">
           <div className="border-b p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h1 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4" /> ARAS Code Assistant</h1>
-              <Badge variant="secondary">ChatGPT-style</Badge>
+              <h1 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4" /> ARAS</h1>
+              <Button variant={secretMode ? 'default' : 'outline'} size="sm" onClick={() => setSecretMode((v) => !v)} className="rounded-full gap-2">
+                <Shield className="h-3.5 w-3.5" /> {secretMode ? 'Secret Mode' : 'Standard'}
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox id="allow-new-table" checked={allowNewTable} onCheckedChange={(v) => setAllowNewTable(!!v)} />
-              <label htmlFor="allow-new-table" className="text-sm">Allow new table</label>
-            </div>
-          </div>
-
-          <div className="p-4 border-b space-y-3 bg-muted/20">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Chatbot</label>
+            <div className="grid grid-cols-3 gap-2">
               <Select value={chatbotId} onValueChange={setChatbotId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Chatbot" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="new">Create New Chatbot</SelectItem>
+                  <SelectItem value="new">New chatbot</SelectItem>
                   {chatbots.map((bot) => <SelectItem key={bot.id} value={bot.id}>{bot.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Database Table</label>
               <Select value={tableName} onValueChange={setTableName}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Table" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="new">Create New Table Label</SelectItem>
+                  <SelectItem value="new">New table</SelectItem>
                   {tables.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant={chatMode === 'build' ? 'default' : 'outline'} onClick={() => setChatMode('build')} className="w-full">Build Mode</Button>
-              <Button variant={chatMode === 'edit' ? 'default' : 'outline'} onClick={() => setChatMode('edit')} className="w-full">Edit Mode</Button>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Model</label>
               <Select value={model} onValueChange={setModel}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {MODEL_OPTIONS.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground flex items-center gap-1"><KeyRound className="h-3 w-3" /> OpenRouter Key</label>
-              <Input type="password" value={openRouterKey} onChange={(e) => setOpenRouterKey(e.target.value)} placeholder="sk-or-v1-..." />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox id="allow-new-chatbot" checked={allowNewChatbot} onCheckedChange={(v) => setAllowNewChatbot(!!v)} />
-              <label htmlFor="allow-new-chatbot" className="text-sm">Allow new chatbot</label>
-            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.map((m, i) => (
-              <div key={`${m.role}-${i}`} className={`rounded-2xl p-3 text-sm whitespace-pre-wrap ${m.role === 'assistant' ? 'bg-muted border mr-6' : 'bg-black text-white dark:bg-white dark:text-black ml-6'}`}>
-                <div className="text-xs mb-1 opacity-70 flex items-center gap-1">{m.role === 'assistant' ? <Bot className="h-3.5 w-3.5" /> : <MessageSquarePlus className="h-3.5 w-3.5" />}{m.role === 'assistant' ? 'ARAS' : 'You'}</div>
-                {m.content}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {showWelcome ? (
+              <div className="h-full flex flex-col items-center justify-center text-center px-2">
+                <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1">Top {secretMode ? 'Secret' : 'Standard'} mode ready</Badge>
+                <h2 className="text-4xl font-semibold tracking-tight">What can I build for you?</h2>
+                <p className="text-muted-foreground mt-3 max-w-sm">Ask ARAS to generate or re-edit the same one-file website and connect chatbot + database flow.</p>
               </div>
-            ))}
+            ) : (
+              <>
+                {messages.map((m, i) => (
+                  <div key={`${m.role}-${i}`} className={`rounded-2xl p-3 text-sm whitespace-pre-wrap ${m.role === 'assistant' ? 'bg-muted border mr-8' : 'bg-primary text-primary-foreground ml-8'}`}>
+                    <div className="text-xs mb-1 opacity-80 flex items-center gap-1">{m.role === 'assistant' ? <Bot className="h-3.5 w-3.5" /> : <MessageSquarePlus className="h-3.5 w-3.5" />}{m.role === 'assistant' ? 'ARAS' : 'You'}</div>
+                    {m.content}
+                  </div>
+                ))}
+
+                {tasks.length > 0 && (
+                  <div className="rounded-2xl border bg-muted/40 p-3 space-y-2">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Task flow</p>
+                    {tasks.map((t) => (
+                      <div key={t.id} className="flex items-center gap-2 text-sm rounded-xl bg-background/80 border px-3 py-2">
+                        {t.status === 'running' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                        <span>{t.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
-          <div className="p-3 border-t bg-background sticky bottom-0">
-            <div className="rounded-2xl border p-2 flex items-end gap-2 shadow-sm">
-              <Textarea value={messageInput} onChange={(e) => setMessageInput(e.target.value)} className="min-h-[64px] border-0 focus-visible:ring-0" placeholder="Tell ARAS what to build or re-edit in this same code..." />
-              <div className="flex flex-col gap-2">
-                <Badge variant="outline" className="max-w-[120px] truncate"><Database className="h-3 w-3 mr-1" /> {tableName === 'new' ? 'new table' : tableName}</Badge>
-                <Button onClick={sendMessage} size="icon" className="rounded-xl"><Send className="h-4 w-4" /></Button>
-              </div>
+          <div className="border-t p-3">
+            <div className="rounded-3xl border bg-background p-2 shadow-sm flex items-end gap-2">
+              <Textarea value={messageInput} onChange={(e) => setMessageInput(e.target.value)} placeholder="Assign task or ask anything..." className="min-h-[72px] border-0 focus-visible:ring-0" />
+              <Button onClick={sendMessage} size="icon" disabled={working || !messageInput.trim()} className="rounded-2xl h-10 w-10">
+                {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
             </div>
           </div>
         </Card>
 
-        <Card className="h-full overflow-hidden">
+        <Card className="h-full overflow-hidden border-border/70">
           <CardContent className="h-full p-0 flex flex-col">
             <div className="border-b p-3 flex items-center justify-between">
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'code' | 'preview')}>
@@ -218,7 +220,7 @@ export default function CodeWorkspacePage() {
                   <TabsTrigger value="preview" className="gap-2"><Eye className="h-4 w-4" /> Preview</TabsTrigger>
                 </TabsList>
               </Tabs>
-              <Badge variant="secondary" className="hidden sm:inline-flex"><PanelLeft className="h-3 w-3 mr-1" /> Full Preview Space</Badge>
+              <Badge variant="secondary"><Database className="h-3 w-3 mr-1" /> Live website preview</Badge>
             </div>
 
             <div className="flex-1 min-h-0">
