@@ -330,12 +330,12 @@ IMPORTANT RULES FOR EDITING DATA:
     }
 
     /* ───── USAGE TRACKING ───── */
-    const month = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString().split('T')[0]
     const { data: existing } = await supabaseAdmin
       .from('usage')
       .select('*')
       .eq('user_id', userId)
-      .eq('month', month)
+      .eq('month', today)
       .maybeSingle()
 
     if (existing) {
@@ -353,7 +353,7 @@ IMPORTANT RULES FOR EDITING DATA:
     } else {
       await supabaseAdmin.from('usage').insert({
         user_id: userId,
-        month,
+        month: today,
         messages: 1,
         tokens: tokensUsed,
         api_calls: 1,

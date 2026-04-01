@@ -161,8 +161,8 @@ export default function CreateChatbotPage() {
     setError(null)
 
     try {
-      if (chatbotCount > 50) {
-        throw new Error('You can only create 50 chatbot on the free plan.')
+      if (chatbotCount >= 50) {
+        throw new Error('You have reached the limit of 50 chatbots on the free plan.')
       }
 
       if (!formData.name || !formData.goal || !formData.description || !formData.model) {
