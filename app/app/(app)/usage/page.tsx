@@ -76,8 +76,8 @@ export default function UsagePage() {
           .from("usage")
           .select("*")
           .eq("user_id", currentUser.id)
-          .gte("created_at", startDate.toISOString())
-          .order("created_at", { ascending: true })
+          .gte("month", startDate.toISOString().split('T')[0])
+          .order("month", { ascending: true })
 
         if (error) {
           console.error("Error loading usage:", error)
@@ -88,7 +88,7 @@ export default function UsagePage() {
 
         if (usageRecords && usageRecords.length > 0) {
           const processed = usageRecords.map((record: any) => ({
-            date: new Date(record.created_at).toLocaleDateString(),
+            date: record.month,
             messages: record.messages || 0,
             tokens: record.tokens || 0,
             apiCalls: record.api_calls || 0,

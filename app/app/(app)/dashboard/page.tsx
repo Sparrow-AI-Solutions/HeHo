@@ -81,19 +81,14 @@ export default function DashboardPage() {
           setChatbots(chatbotsData || [])
         }
 
-        // Calculate today's date range for filtering usage
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const startOfDay = new Date(today)
-        const endOfDay = new Date(today)
-        endOfDay.setDate(endOfDay.getDate() + 1)
+        // Calculate today's date for filtering usage
+        const todayStr = new Date().toISOString().split('T')[0]
 
         const { data: usageData, error: usageError } = await supabase
           .from("usage")
           .select("*")
           .eq("user_id", currentUser.id)
-          .gte("created_at", startOfDay.toISOString())
-          .lt("created_at", endOfDay.toISOString())
+          .eq("month", todayStr)
 
         if (usageError) {
           console.error("Usage fetch error:", usageError)
