@@ -82,6 +82,17 @@ export default function CodeWorkspacePage() {
 
   const selectedChatbot = useMemo(() => chatbots.find((bot) => bot.id === chatbotId), [chatbots, chatbotId])
 
+
+  const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 12000) => {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await fetch(url, { ...options, signal: controller.signal })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
   const sendMessage = async () => {
     if (!messageInput.trim() || working) return
     const prompt = messageInput.trim()
@@ -101,7 +112,7 @@ export default function CodeWorkspacePage() {
 
     if (chatbotId !== 'new') {
       try {
-        const res = await fetch('/api/chat', {
+        const res = await fetchWithTimeout('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -115,9 +126,11 @@ export default function CodeWorkspacePage() {
         if (res.ok) {
           const data = await res.json()
           assistantReply = data.response || data.message || 'Connected chatbot replied successfully.'
+        } else {
+          assistantReply = 'Selected chatbot is unavailable right now. I switched to local ARAS coding mode.'
         }
       } catch {
-        assistantReply = ''
+        assistantReply = 'Chatbot call timed out. I switched to local ARAS coding mode so you can continue.'
       }
     }
 
@@ -133,12 +146,12 @@ export default function CodeWorkspacePage() {
 
     if (nextCode !== code) setCode(nextCode)
     setMessages((prev) => [...prev, { role: 'assistant', content: assistantReply }])
-    setWorking(false)
     setMessageInput('')
+    setWorking(false)
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-6">
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 pb-6">
       <Card className="overflow-hidden border-border/70">
         <CardContent className="p-0">
           <div className="p-4 border-b bg-card">
@@ -192,19 +205,20 @@ export default function CodeWorkspacePage() {
           </div>
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'chat' | 'preview' | 'code')} className="w-full">
-            <div className="border-b p-3">
+            <div className="border-b p-3 space-y-2">
               <TabsList className="grid grid-cols-3 w-full max-w-md">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>
                 <TabsTrigger value="code">Code</TabsTrigger>
               </TabsList>
+              <p className="text-xs text-muted-foreground">One tab visible at a time for cleaner mobile workflow.</p>
             </div>
 
             <TabsContent value="chat" className="m-0 min-h-[58vh] flex flex-col">
               <div className="flex-1 p-4 space-y-3 overflow-y-auto">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center">
-                    <h2 className="text-5xl font-semibold tracking-tight">What can I build for you?</h2>
+                    <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight">What can I build for you?</h2>
                   </div>
                 ) : (
                   messages.map((m, i) => (
@@ -226,14 +240,14 @@ export default function CodeWorkspacePage() {
               </div>
             </TabsContent>
 
-            <TabsContent value="preview" className="m-0 h-[68vh] border-t">
+            <TabsContent value="preview" className="m-0 h-[62vh] sm:h-[68vh] border-t">
               <div className="flex items-center justify-between p-3 border-b bg-muted/30">
                 <Badge variant="secondary"><Database className="h-3 w-3 mr-1" /> Live website preview</Badge>
               </div>
-              <iframe title="Website Preview" srcDoc={code} className="w-full h-[calc(68vh-53px)] border-0 bg-white" sandbox="allow-scripts allow-forms" />
+              <iframe title="Website Preview" srcDoc={code} className="w-full h-[calc(62vh-53px)] sm:h-[calc(68vh-53px)] border-0 bg-white" sandbox="allow-scripts allow-forms" />
             </TabsContent>
 
-            <TabsContent value="code" className="m-0 h-[68vh] border-t">
+            <TabsContent value="code" className="m-0 h-[62vh] sm:h-[68vh] border-t">
               <Textarea value={code} onChange={(e) => setCode(e.target.value)} className="h-full min-h-full resize-none rounded-none border-0 font-mono text-xs" />
             </TabsContent>
           </Tabs>
