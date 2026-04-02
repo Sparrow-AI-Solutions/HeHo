@@ -323,46 +323,6 @@ document.addEventListener('DOMContentLoaded', function() {
     )
   }
 
-  const handleCreateNewChatbot = async () => {
-    if (!newChatbotForm.name || !newChatbotForm.goal || newChatbotForm.description.length < 200) {
-      alert('Please fill all fields. Description must be at least 200 characters.')
-      return
-    }
-
-    setCreatingChatbot(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data, error } = await supabase
-        .from('chatbots')
-        .insert({
-          user_id: user.id,
-          name: newChatbotForm.name,
-          goal: newChatbotForm.goal,
-          description: newChatbotForm.description,
-          model: newChatbotForm.model,
-          tone: 'professional',
-          theme: 'sky',
-          status: 'active',
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setChatbots([...chatbots, data])
-      setSelectedChatbots([...selectedChatbots, data.id])
-      setShowNewChatbotForm(false)
-      setNewChatbotForm({ name: '', goal: '', description: '', model: 'qwen/qwen3-next-80b-a3b-instruct:free' })
-    } catch (err) {
-      console.error('Error creating chatbot:', err)
-      alert('Failed to create chatbot')
-    } finally {
-      setCreatingChatbot(false)
-    }
-  }
-
   const getCombinedPreview = () => {
     return `${htmlCode}\n<style>${cssCode}</style>\n<script>${jsCode}</script>`
   }
@@ -414,61 +374,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     {selectedModel === model.id && <div className="h-2 w-2 rounded-full bg-primary" />}
                   </DropdownMenuItem>
                 ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu open={showChatbotSelector} onOpenChange={setShowChatbotSelector}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2 border-border/50 bg-card/50 text-xs sm:text-sm flex-1 sm:flex-none">
-                  <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
-                  <span className="hidden sm:inline">Chatbots</span>
-                  <span className="sm:hidden text-[10px]">{selectedChatbots.length}</span>
-                  <ChevronDown className="h-3.5 w-3.5 opacity-50 hidden sm:block" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <ScrollArea className="h-64">
-                  {chatbots.length === 0 ? (
-                    <div className="p-4 text-xs text-muted-foreground text-center">No chatbots yet</div>
-                  ) : (
-                    chatbots.map(cb => (
-                      <div key={cb.id} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer" onClick={() => toggleChatbot(cb.id)}>
-                        <Checkbox checked={selectedChatbots.includes(cb.id)} />
-                        <span className="text-xs truncate flex-1">{cb.name}</span>
-                      </div>
-                    ))
-                  )}
-                </ScrollArea>
-                <div className="border-t border-border/50 p-2">
-                  <Button size="sm" variant="ghost" className="w-full gap-2 text-xs" onClick={() => setShowNewChatbotForm(true)}>
-                    <Plus className="h-3.5 w-3.5" /> New Chatbot
-                  </Button>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu open={showTableSelector} onOpenChange={setShowTableSelector}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2 border-border/50 bg-card/50 text-xs sm:text-sm flex-1 sm:flex-none">
-                  <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
-                  <span className="hidden sm:inline">Tables</span>
-                  <span className="sm:hidden text-[10px]">{selectedTables.length}</span>
-                  <ChevronDown className="h-3.5 w-3.5 opacity-50 hidden sm:block" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <ScrollArea className="h-64">
-                  {tables.length === 0 ? (
-                    <div className="p-4 text-xs text-muted-foreground text-center">No tables available</div>
-                  ) : (
-                    tables.map(table => (
-                      <div key={table.table_name} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer" onClick={() => toggleTable(table.table_name)}>
-                        <Checkbox checked={selectedTables.includes(table.table_name)} />
-                        <span className="text-xs truncate flex-1">{table.table_name}</span>
-                      </div>
-                    ))
-                  )}
-                </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>
             
@@ -533,26 +438,88 @@ document.addEventListener('DOMContentLoaded', function() {
                         <Database className="h-4 w-4 text-green-500" />
                         <span>New Tables</span>
                       </Button>
+                      <Button variant="outline" disabled className="h-auto py-3 flex-col gap-1 border-border/50 bg-background/50 opacity-50 cursor-not-allowed text-xs">
+                        <Zap className="h-4 w-4 text-purple-500" />
+                        <span>Melius</span>
+                      </Button>
+                      <Button variant="outline" disabled className="h-auto py-3 flex-col gap-1 border-border/50 bg-background/50 opacity-50 cursor-not-allowed text-xs">
+                        <Package className="h-4 w-4 text-orange-500" />
+                        <span>Pantry</span>
+                      </Button>
                     </div>
                   </div>
                 ) : (
-                  messages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-xs sm:max-w-md lg:max-w-lg px-4 py-2 rounded-lg ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-xs sm:text-sm">
-                          {msg.content}
-                        </ReactMarkdown>
+                  <div className="space-y-4">
+                    {messages.map((m) => (
+                      <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[90%] rounded-lg px-4 py-3 text-sm ${
+                          m.role === "user" 
+                            ? "bg-primary text-primary-foreground" 
+                            : "bg-muted border border-border/50"
+                        }`}>
+                          <div className="prose dark:prose-invert max-w-none text-sm">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
                 )}
-                <div ref={messagesEndRef} />
               </div>
 
-              {/* Input */}
-              <div className="border-t border-border/50 p-4 sm:p-6 bg-background/50">
-                <div className="flex gap-2">
-                  <div className="flex-1 bg-card/50 border border-border/50 rounded-lg px-3 py-2 flex items-center gap-2">
+              {/* Input Area */}
+              <div className="p-3 sm:p-4 border-t border-border/50 bg-background/50">
+                <div className="flex flex-col gap-2 bg-background border border-border/50 rounded-xl p-3 shadow-sm">
+                  <div className="flex items-center gap-1 border-b border-border/30 pb-2 mb-1 flex-wrap gap-y-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] sm:text-xs gap-1 text-muted-foreground hover:text-foreground">
+                          <MessageSquare className="h-3 w-3" />
+                          <span>CB ({selectedChatbots.length})</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48 text-xs">
+                        {chatbots.length === 0 ? (
+                          <div className="p-2 text-xs text-muted-foreground">No chatbots</div>
+                        ) : (
+                          chatbots.map(cb => (
+                            <DropdownMenuItem key={cb.id} onClick={() => toggleChatbot(cb.id)} className="flex items-center gap-2">
+                              <div className={`h-2 w-2 rounded-full ${selectedChatbots.includes(cb.id) ? "bg-primary" : "bg-muted"}`} />
+                              {cb.name}
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] sm:text-xs gap-1 text-muted-foreground hover:text-foreground">
+                          <Database className="h-3 w-3" />
+                          <span>TBL ({selectedTables.length})</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48 text-xs">
+                        {tables.length === 0 ? (
+                          <div className="p-2 text-xs text-muted-foreground">No tables</div>
+                        ) : (
+                          tables.map(tb => (
+                            <DropdownMenuItem key={tb.table_name} onClick={() => toggleTable(tb.table_name)} className="flex items-center gap-2">
+                              <div className={`h-2 w-2 rounded-full ${selectedTables.includes(tb.table_name) ? "bg-primary" : "bg-muted"}`} />
+                              {tb.table_name}
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
+                      <Github className="h-3 w-3" />
+                    </Button>
+                  </div>
+
+                  <div className="flex items-end gap-2">
                     <Textarea
                       ref={textareaRef}
                       value={input}
@@ -675,79 +642,46 @@ document.addEventListener('DOMContentLoaded', function() {
           )}
         </div>
       </div>
-
-      {/* New Chatbot Form Modal */}
-      {showNewChatbotForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <div className="p-6">
-              <h2 className="text-lg font-bold mb-4">Create New Chatbot</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium">Chatbot Name</label>
-                  <input 
-                    type="text" 
-                    value={newChatbotForm.name}
-                    onChange={(e) => setNewChatbotForm({...newChatbotForm, name: e.target.value})}
-                    className="w-full mt-1 px-3 py-2 border border-border/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="e.g., Customer Support Bot"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium">Goal</label>
-                  <input 
-                    type="text" 
-                    value={newChatbotForm.goal}
-                    onChange={(e) => setNewChatbotForm({...newChatbotForm, goal: e.target.value})}
-                    className="w-full mt-1 px-3 py-2 border border-border/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="e.g., Help customers with support"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium">Description (min 200 chars)</label>
-                  <textarea 
-                    value={newChatbotForm.description}
-                    onChange={(e) => setNewChatbotForm({...newChatbotForm, description: e.target.value})}
-                    className="w-full mt-1 px-3 py-2 border border-border/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                    rows={3}
-                    placeholder="Describe what your chatbot does..."
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{newChatbotForm.description.length}/200</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium">AI Model</label>
-                  <select 
-                    value={newChatbotForm.model}
-                    onChange={(e) => setNewChatbotForm({...newChatbotForm, model: e.target.value})}
-                    className="w-full mt-1 px-3 py-2 border border-border/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {models.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => setShowNewChatbotForm(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    className="flex-1"
-                    onClick={handleCreateNewChatbot}
-                    disabled={creatingChatbot}
-                  >
-                    {creatingChatbot ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Create
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }
+
+  const handleCreateNewChatbot = async () => {
+    if (!newChatbotForm.name || !newChatbotForm.goal || newChatbotForm.description.length < 200) {
+      alert('Please fill all fields. Description must be at least 200 characters.')
+      return
+    }
+
+    setCreatingChatbot(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('chatbots')
+        .insert({
+          user_id: user.id,
+          name: newChatbotForm.name,
+          goal: newChatbotForm.goal,
+          description: newChatbotForm.description,
+          model: newChatbotForm.model,
+          tone: 'professional',
+          theme: 'sky',
+          status: 'active',
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setChatbots([...chatbots, data])
+      setSelectedChatbots([...selectedChatbots, data.id])
+      setShowNewChatbotForm(false)
+      setNewChatbotForm({ name: '', goal: '', description: '', model: 'qwen/qwen3-next-80b-a3b-instruct:free' })
+    } catch (err) {
+      console.error('Error creating chatbot:', err)
+      alert('Failed to create chatbot')
+    } finally {
+      setCreatingChatbot(false)
+    }
+  }
