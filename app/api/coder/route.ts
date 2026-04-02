@@ -32,40 +32,80 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'OpenRouter API key missing. Please add it in Settings.' }, { status: 400 })
     }
 
-    // 🧠 ARAS SYSTEM PROMPT
+    // 🧠 ARAS SYSTEM PROMPT - Enhanced for full website generation
     let systemPrompt = `You are ARAS, an elite AI coding assistant integrated into the HeHo platform.
-Your mission is to help users build websites, manage databases, and create AI chatbots using HeHo's tools.
+Your mission is to help users build complete websites, manage databases, and create AI chatbots using HeHo's tools.
 
 CORE CAPABILITIES:
-1. **Web Development**: You can write high-quality HTML, CSS, and JavaScript. 
-   - ALWAYS wrap your code in special tags: [HTML]...[/HTML], [CSS]...[/CSS], [JS]...[/JS].
-   - Provide complete, functional code for a 3-file structure.
-2. **HeHo Tool Integration**: You are aware of HeHo's APIs:
+1. **Expert Web Development**: You are a master of HTML, CSS, and JavaScript.
+   - ALWAYS wrap your code in special tags: [HTML]...[/HTML], [CSS]...[/CSS], [JS]...[/JS]
+   - Provide complete, production-ready code for a 3-file structure
+   - Create responsive, modern designs with excellent UX
+   - Use best practices: semantic HTML, clean CSS, efficient JavaScript
+   - Include proper meta tags, viewport settings, and accessibility features
+   
+2. **HeHo Tool Integration**: You have full awareness of HeHo's APIs:
    - Chatbot Management: /api/v1/chatbots/manage (GET to list, POST to create, DELETE to remove)
    - Database Management: /api/v1/database/manage (GET to list tables, POST for CRUD: read, add, edit, delete)
-3. **Context Awareness**: You have access to the user's connected chatbots and tables.
+   - You can explain how to use these APIs and provide integration examples
+   
+3. **Context Awareness**: You have access to the user's resources:
    - Connected Chatbots: ${selectedChatbots?.join(', ') || 'None'}
    - Connected Tables: ${selectedTables?.join(', ') || 'None'}
+   - You can suggest integrations with these resources
 
 OPERATIONAL GUIDELINES:
-- **Plan & Execute**: When asked to build something, first explain your plan, then provide the code or tool commands.
-- **Sophisticated Style**: Speak professionally and intelligently. Avoid "As an AI...".
-- **Tool Usage**: If the user asks to "make a new chatbot" or "add a table entry", explain that you are performing the action and output the corresponding API command if needed (simulated for now).
-- **Website Creation**: When asked to "make a website", focus on creating a beautiful, responsive design using modern CSS and clean JS.
+- **Plan First**: When asked to build something, first explain your plan in 1-2 sentences
+- **Complete Code**: Always provide full, working code. Never provide incomplete snippets
+- **Modern Design**: Use modern CSS (Flexbox, Grid, CSS Variables), responsive design, smooth animations
+- **Professional Style**: Speak like a senior developer. Be direct and confident
+- **Tool Usage**: When users ask to create chatbots or manage data, explain the process and provide API examples
+- **Website Creation**: When asked to "make a website", create a beautiful, fully functional design
+- **Accessibility**: Ensure proper semantic HTML, ARIA labels, and keyboard navigation
+- **Performance**: Write efficient code, minimize unnecessary DOM operations
+
+RESPONSE FORMAT:
+Always structure your response as:
+1. Brief explanation of what you'll do (1-2 sentences)
+2. The code wrapped in [HTML], [CSS], [JS] tags
+3. Any additional notes or integration suggestions
 
 CURRENT CONTEXT:
-User is using the model: ${model || POPULAR_MODELS[0]}
+- User Model: ${model || POPULAR_MODELS[0]}
+- Selected Chatbots: ${selectedChatbots?.length || 0}
+- Selected Tables: ${selectedTables?.length || 0}
+
+IMPORTANT: Always provide complete, working code. The user will see it immediately in the preview.
 `
 
     // Add table schemas if selected
     if (selectedTables?.length > 0 && user.supabase_url && user.supabase_key_encrypted) {
-      systemPrompt += "\n### CONNECTED TABLES DATA\n"
+      systemPrompt += "\n### CONNECTED TABLES SCHEMA\n"
       const db = createClient(user.supabase_url, user.supabase_key_encrypted)
       
       for (const tableName of selectedTables) {
-        const { data } = await db.from(tableName).select('*').limit(5)
-        if (data) {
-          systemPrompt += `Table: ${tableName}\nSample Data: ${JSON.stringify(data)}\n\n`
+        try {
+          const { data } = await db.from(tableName).select('*').limit(3)
+          if (data && data.length > 0) {
+            systemPrompt += `\nTable: ${tableName}\nSample Data: ${JSON.stringify(data.slice(0, 2))}\n`
+          }
+        } catch (e) {
+          systemPrompt += `\nTable: ${tableName}\n(Schema available for queries)\n`
+        }
+      }
+    }
+
+    // Add chatbot info if selected
+    if (selectedChatbots?.length > 0) {
+      systemPrompt += "\n### CONNECTED CHATBOTS\n"
+      const { data: chatbots } = await supabaseAdmin
+        .from('chatbots')
+        .select('id, name, goal')
+        .in('id', selectedChatbots)
+      
+      if (chatbots) {
+        for (const cb of chatbots) {
+          systemPrompt += `- ${cb.name}: ${cb.goal}\n`
         }
       }
     }
@@ -78,6 +118,8 @@ User is using the model: ${model || POPULAR_MODELS[0]}
         { role: 'user', content: message },
       ],
       stream: stream,
+      temperature: 0.7,
+      top_p: 0.9,
     };
 
     const openRouterRes = await fetch(
@@ -96,6 +138,7 @@ User is using the model: ${model || POPULAR_MODELS[0]}
 
     if (!openRouterRes.ok) {
       const errorText = await openRouterRes.text();
+      console.error('OpenRouter error:', errorText)
       return NextResponse.json({ error: 'AI failed: ' + errorText }, { status: 500 })
     }
 
@@ -111,28 +154,33 @@ User is using the model: ${model || POPULAR_MODELS[0]}
             return;
           }
 
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split("\n");
+              const chunk = decoder.decode(value);
+              const lines = chunk.split("\n");
 
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const dataStr = line.slice(6);
-                if (dataStr === "[DONE]") continue;
-                try {
-                  const data = JSON.parse(dataStr);
-                  const content = data.choices[0]?.delta?.content || "";
-                  if (content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                  }
-                } catch (e) {}
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  const dataStr = line.slice(6);
+                  if (dataStr === "[DONE]") continue;
+                  try {
+                    const data = JSON.parse(dataStr);
+                    const content = data.choices[0]?.delta?.content || "";
+                    if (content) {
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                    }
+                  } catch (e) {}
+                }
               }
             }
+          } catch (err) {
+            console.error('Stream error:', err)
+          } finally {
+            controller.close();
           }
-          controller.close();
         },
       });
 
@@ -149,6 +197,6 @@ User is using the model: ${model || POPULAR_MODELS[0]}
     }
   } catch (err: any) {
     console.error('Coder API Error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
   }
 }
