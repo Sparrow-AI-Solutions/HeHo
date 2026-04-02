@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { HeHoLogo } from "./heho-logo"
 import { Button } from "./ui/button"
 import Link from "next/link"
-import { Menu, X, BarChart3, MessageSquare, Database, Zap, LogOut, Settings, Package } from "lucide-react"
+import { Menu, X, BarChart3, MessageSquare, Database, Zap, LogOut, Settings, Package, Code } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 
@@ -13,6 +13,7 @@ const navItems = [
   { href: "/app/chatbots", icon: MessageSquare, label: "Chatbots" },
   { href: "/app/database", icon: Database, label: "Database" },
   { href: "/app/pantry", icon: Package, label: "ZSON" },
+  { href: "/app/coder", icon: Code, label: "Coder" },
   { href: "/app/usage", icon: Zap, label: "Usage" },
 ]
 
