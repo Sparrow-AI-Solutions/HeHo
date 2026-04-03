@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
@@ -123,6 +123,83 @@ export async function POST(req: Request) {
       chatbotId: data.id,
       name: data.name
     }, { status: 201, headers: corsHeaders });
+
+  } catch (error: any) {
+    console.error('API Error:', error.message);
+    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// PUT /api/v1/chatbots/manage - Update a chatbot
+export async function PUT(req: Request) {
+  const userId = await authenticate(req);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json();
+    const { 
+      chatbotId,
+      name, goal, description, model, tone, theme,
+      data_table_1, data_table_1_read, data_table_1_write, data_table_1_edit,
+      data_table_2, data_table_2_read, data_table_2_write, data_table_2_edit,
+      data_table_3, data_table_3_read, data_table_3_write, data_table_3_edit
+    } = body;
+
+    if (!chatbotId) {
+      return NextResponse.json({ error: 'chatbotId is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (goal !== undefined) updateData.goal = goal;
+    if (description !== undefined) {
+      if (description.length < 200) {
+        return NextResponse.json({ error: 'Project description must be at least 200 characters' }, { status: 400, headers: corsHeaders });
+      }
+      updateData.description = description;
+    }
+    if (model !== undefined) updateData.model = model;
+    if (tone !== undefined) updateData.tone = tone;
+    if (theme !== undefined) updateData.theme = theme;
+    
+    if (data_table_1 !== undefined) updateData.data_table_1 = data_table_1 === '_none_' ? null : data_table_1;
+    if (data_table_1_read !== undefined) updateData.data_table_1_read = !!data_table_1_read;
+    if (data_table_1_write !== undefined) updateData.data_table_1_write = !!data_table_1_write;
+    if (data_table_1_edit !== undefined) updateData.data_table_1_edit = !!data_table_1_edit;
+    
+    if (data_table_2 !== undefined) updateData.data_table_2 = data_table_2 === '_none_' ? null : data_table_2;
+    if (data_table_2_read !== undefined) updateData.data_table_2_read = !!data_table_2_read;
+    if (data_table_2_write !== undefined) updateData.data_table_2_write = !!data_table_2_write;
+    if (data_table_2_edit !== undefined) updateData.data_table_2_edit = !!data_table_2_edit;
+    
+    if (data_table_3 !== undefined) updateData.data_table_3 = data_table_3 === '_none_' ? null : data_table_3;
+    if (data_table_3_read !== undefined) updateData.data_table_3_read = !!data_table_3_read;
+    if (data_table_3_write !== undefined) updateData.data_table_3_write = !!data_table_3_write;
+    if (data_table_3_edit !== undefined) updateData.data_table_3_edit = !!data_table_3_edit;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No fields provided for update' }, { status: 400, headers: corsHeaders });
+    }
+
+    const supabaseAdmin = createSupabaseAdminClient();
+    const { data, error: updateError } = await supabaseAdmin
+      .from('chatbots')
+      .update(updateData)
+      .eq('id', chatbotId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (updateError) {
+      return NextResponse.json({ error: 'Failed to update chatbot', details: updateError.message }, { status: 500, headers: corsHeaders });
+    }
+
+    return NextResponse.json({ 
+      message: "Chatbot updated successfully!",
+      chatbot: data
+    }, { status: 200, headers: corsHeaders });
 
   } catch (error: any) {
     console.error('API Error:', error.message);
