@@ -35,6 +35,55 @@ const ApiDocsPage = () => {
 
       <Card className="mb-8">
         <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/v1/login</CardTitle>
+          <CardDescription>Authenticate with email/password to retrieve your HeHo API key. Generates one if it doesn't exist.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Request Body (JSON)</p>
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell><code>email</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Your account email address (Required).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>password</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Your account password (Required).</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X POST https://heho.vercel.app/api/v1/login \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "email": "user@example.com", 
+    "password": "yourpassword" 
+  }'`}
+              </code>
+            </pre>
+          </div>
+          <div className="p-4 bg-blue-50 border-l-4 border-blue-400 dark:bg-blue-900/20 dark:border-blue-500">
+            <p className="text-blue-700 dark:text-blue-400 text-sm">
+              <strong>Note:</strong> This endpoint requires your OpenRouter key to be set up in the dashboard first. If no HeHo API key exists, it will be automatically generated.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
           <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">POST</Badge> /api/verify-user</CardTitle>
           <CardDescription>Verifies your API key and returns your complete user profile from the database.</CardDescription>
         </CardHeader>
@@ -218,6 +267,78 @@ const ApiDocsPage = () => {
               <code>
 {`curl -X GET https://heho.vercel.app/api/v1/chatbots/manage \\ 
   -H "Authorization: Bearer YOUR_HEHO_API_KEY"`}
+              </code>
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center"><Badge variant="secondary" className="mr-2">PUT</Badge> /api/v1/chatbots/manage</CardTitle>
+          <CardDescription>Update an existing chatbot's configuration.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="font-semibold mb-2">Request Body (JSON)</p>
+          <Table className="mb-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell><code>chatbotId</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>The ID of the chatbot to update (Required).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>name</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Updated name (Optional).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>goal</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Updated goal (Optional).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>description</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Updated description (Min 200 chars) (Optional).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>model</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Updated AI model ID (Optional).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>tone</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Updated tone (Optional).</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><code>theme</code></TableCell>
+                <TableCell>string</TableCell>
+                <TableCell>Updated theme (Optional).</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-lg mb-2">Example: cURL</h4>
+            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md text-sm overflow-x-auto">
+              <code>
+{`curl -X PUT https://heho.vercel.app/api/v1/chatbots/manage \\ 
+  -H "Authorization: Bearer YOUR_HEHO_API_KEY" \\ 
+  -H "Content-Type: application/json" \\ 
+  -d '{ 
+    "chatbotId": "YOUR_CHATBOT_ID", 
+    "name": "Updated Assistant Name", 
+    "tone": "friendly"
+  }'`}
               </code>
             </pre>
           </div>

@@ -795,7 +795,7 @@ function ChatbotSettingsPage() {
                       </div>
                     </div>
                     <p className='text-sm text-muted-foreground font-medium'>
-                      For more information on integrating with the HeHo API, refer to the <a href="/api-documentation" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">API Documentation Page</a>.
+                      For more information on integrating with the HeHo API, refer to the <Link href="/api-docs" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">API Documentation Page</Link>.
                     </p>
 
                     <div className="pt-4 border-t border-border/50 space-y-4">
