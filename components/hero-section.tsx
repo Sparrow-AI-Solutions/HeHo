@@ -41,8 +41,14 @@ export function HeroSection() {
           </h1>
 
           <p className="text-lg md:text-xl dark:text-gray-300 text-gray-800 mb-8 text-balance max-w-2xl mx-auto">
-            HeHo connects AI to your database, providing autonomous data management, intelligent chatbots, custom APIs, and context-aware agents—all without writing code.
+            HeHo is an AI-powered platform for building intelligent chatbots, autonomous backends, and custom APIs. Connect your database and deploy in minutes.
           </p>
+
+          <div className="flex justify-center mb-8">
+            <a href="https://startupfa.me/s/heho.vercel.app-863?utm_source=heho.vercel.app" target="_blank" rel="noopener noreferrer">
+              <img src="https://startupfa.me/badges/featured/default.webp" alt="heho.vercel.app - Featured on Startup Fame" width="171" height="54" />
+            </a>
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/signup">
