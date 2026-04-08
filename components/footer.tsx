@@ -20,9 +20,7 @@ export function Footer() {
               <a href="https://www.producthunt.com/products/heho?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-heho" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-80">
                 <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1118506&theme=light&t=1775628653295" alt="HeHo - The AI-Powered Backend Orchestrator | Product Hunt" width="250" height="54" className="h-auto" />
               </a>
-              <a href="https://www.aidirectori.es" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-80">
-                <img src="https://cdn.aidirectori.es/ai-tools/badges/dark-mode.png" alt="AI Directories Badge" width="171" height="54" className="h-auto" />
-              </a>
+
             </div>
           </div>
 
