@@ -158,14 +158,7 @@ export function AnimatedFeaturesSection() {
       darkColors: ["#171717", "#272727", "#1b1b1b"],
       lightColors: [],
     },
-    {
-      title: "REST API Engine",
-      value: "Instant APIs",
-      subtitle:
-        "Automatically generate and deploy RESTful API endpoints for chatbot management, database operations, and autonomous backend control.",
-      darkColors: ["#171717", "#272727", "#1b1b1b"],
-      lightColors: [],
-    },
+
     {
       title: "Granular Security",
       value: "Complete Control",
