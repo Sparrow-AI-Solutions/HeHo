@@ -3,6 +3,7 @@ import { HeroSection } from "@/components/hero-section"
 import { AnimatedFeaturesSection } from "@/components/animated-features-section"
 import { PricingSection } from "@/components/pricing-section"
 import { FaqSection } from "@/components/faq-section"
+import { FeaturedOn } from "@/components/featured-on"
 import { Footer } from "@/components/footer"
 
 export default function HomePage() {
@@ -13,6 +14,7 @@ export default function HomePage() {
         <HeroSection />
         <AnimatedFeaturesSection />
         <PricingSection />
+        <FeaturedOn />
         <FaqSection />
       </main>
       <Footer />
