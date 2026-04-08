@@ -13,6 +13,11 @@ export function Footer() {
             <p className="text-muted-foreground mb-4 max-w-md">
               HeHo is an AI-powered platform for building intelligent chatbots, autonomous backends, and custom APIs. Connect your database and deploy in minutes.
             </p>
+            <div className="mb-4">
+              <a href="https://startupfa.me/s/heho.vercel.app-863?utm_source=heho.vercel.app" target="_blank" rel="noopener noreferrer">
+                <img src="https://startupfa.me/badges/featured/default.webp" alt="heho.vercel.app - Featured on Startup Fame" width="171" height="54" />
+              </a>
+            </div>
           </div>
 
           <div>
